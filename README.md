@@ -13,6 +13,7 @@ This is Arduino Nano built
 
 ## Outputs
 | WIRING | NAME | DESCRIPTION |
+| --- | --- | --- |
 | D2 | fanPin | |
 | D3 | warningPin | |
 | D7 | neutralPin | |
