@@ -1,9 +1,10 @@
-int debug = 1; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
+int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
 
 int temperatureSensorPin  = A0;
 int gearBox1Pin           = A5;
 int gearBox2Pin           = A6;
 int gearBox3Pin           = A7;
+int debugPin              = A2;
 
 int fanPin                = 2;
 int warningPin            = 3;
@@ -39,6 +40,7 @@ void setup() {
   pinMode(gearBox1Pin, INPUT);
   pinMode(gearBox2Pin, INPUT);
   pinMode(gearBox3Pin, INPUT);
+  pinMode(debugPin, INPUT);
 
   //Sories
   pinMode(ledPin, OUTPUT);
@@ -53,7 +55,7 @@ void setup() {
 
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
-  if (debug) Serial.begin(9600);
+  //if (debug) Serial.begin(9600);
   
 }
 
@@ -127,8 +129,10 @@ void loop() {
   digitalWrite(gear3Pin, gear == 3 ? HIGH : LOW);
   digitalWrite(gear4Pin, gear == 4 ? HIGH : LOW);
   digitalWrite(gear5Pin, gear == 5 ? HIGH : LOW);
-      
-  if (debug == 1 || debug == 3 ) {
+
+  boolean debugWire = analogToDigital(analogRead(debugPin));
+
+  if (debug == 1 || debug == 3 || debugWire == LOW) {
 
     String text = "";
     text += "TS: ";
@@ -148,11 +152,11 @@ void loop() {
     text += (int)(gearBox2Value);
     text += "/";
     text += (int)(gearBox3Value);
-
+    Serial.begin(9600);
     Serial.println(text);  
-    
+    Serial.end();
   }
-  if (debug == 2 || debug == 3) {
+  if (debug == 2 || debug == 3 || debugWire == LOW) {
    
       for (int i = 0; i < gear; i++) {
         digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
