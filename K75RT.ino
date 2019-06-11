@@ -1,10 +1,10 @@
-int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
+int debug = 1; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
+int debugPin              = A0;
 
-int temperatureSensorPin  = A0;
+int temperatureSensorPin  = A2;
 int gearBox1Pin           = A5;
 int gearBox2Pin           = A6;
 int gearBox3Pin           = A7;
-int debugPin              = A2;
 
 int fanPin                = 2;
 int warningPin            = 3;
