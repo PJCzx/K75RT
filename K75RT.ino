@@ -32,8 +32,9 @@ float gearBox3Value = 0;
  * 111° > Warning ON (143 OHMS)
  */
 const float VENTILATION_THRESHOLD_OHMS = 175;
+const float VENTILATION_HYSTERESIS = 1000;
 const float WARNING_THRESHOLD_OHMS = 143;
-const float HYSTERESIS = 1000;
+const float WARNING_HYSTERESIS = 100;
 
 boolean fanOn = false;
 boolean warningOn = false;
@@ -98,10 +99,10 @@ void loop() {
   
   //Application des mesures nécessaire vis-à-vis de la résitance mesurés
   if(temperatureSensorResistance < VENTILATION_THRESHOLD_OHMS) fanOn = true;
-  if(temperatureSensorResistance > VENTILATION_THRESHOLD_OHMS + HYSTERESIS) fanOn = false;
+  if(temperatureSensorResistance > VENTILATION_THRESHOLD_OHMS + VENTILATION_HYSTERESIS) fanOn = false;
   
   if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) warningOn =  true;
-  if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + HYSTERESIS) warningOn =  false;
+  if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) warningOn =  false;
   
   digitalWrite(fanPin, fanOn ? HIGH : LOW); 
   digitalWrite(warningPin, warningOn ? HIGH : LOW); 
