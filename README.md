@@ -22,4 +22,4 @@ This is Arduino Nano built
 | D10 | gear3Pin | |        
 | D11 | gear4Pin | |
 | D12 | gear5Pin | |
-| D13 | ledPin | Usefull when debug is active (via variable or see A0 debugPin |
+| D13 | ledPin | Usefull when debug is active (via variable or see A0 debugPin) |
