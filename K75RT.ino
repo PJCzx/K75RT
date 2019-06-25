@@ -2,6 +2,7 @@ int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
 int debugPin              = A0;
 
 int temperatureSensorPin  = A2;
+int oilPressureSensorPin  = A3;
 int gearBox1Pin           = A5;
 int gearBox2Pin           = A6;
 int gearBox3Pin           = A7;
@@ -17,6 +18,7 @@ int gear5Pin              = 12;
 int ledPin                = 13;      // select the pin for the LED
 
 float temperatureSensorValue = 0;  // variable to store the value coming from the sensor
+float oilPresureSensorValue = 0;
 float gearBox1Value = 0;
 float gearBox2Value = 0;
 float gearBox3Value = 0;
@@ -37,11 +39,16 @@ const float WARNING_THRESHOLD_OHMS = 143;
 const float WARNING_HYSTERESIS = 100;
 
 boolean fanOn = false;
-boolean warningOn = false;
+
+boolean globalWarning = false;
+boolean oilPressureWarning = false;
+boolean gearWarning = false;
+boolean temperatureWarning = false;
 
 void setup() {
   //Entrées
   pinMode(temperatureSensorPin, INPUT);
+  pinMode(oilPressureSensorPin, INPUT);
   pinMode(gearBox1Pin, INPUT);
   pinMode(gearBox2Pin, INPUT);
   pinMode(gearBox3Pin, INPUT);
@@ -75,6 +82,15 @@ float mapf(double val, double in_min, double in_max, double out_min, double out_
 }
 
 void loop() {
+
+  /*********************************
+  PRESSION D'HUILE MOTEUR 
+  *********************************/
+
+  //Mesure de la valeur de la sonde de pression d'huile moteur
+  oilPresureSensorValue = analogRead(oilPressureSensorPin);
+  oilPressureWarning = analogToDigital(oilPresureSensorValue) == HIGH ? true : false;
+
   /*********************************
   TEMPERATURE MOTEUR ET VENTILATION
   *********************************/
@@ -101,13 +117,9 @@ void loop() {
   if(temperatureSensorResistance < VENTILATION_THRESHOLD_OHMS) fanOn = true;
   if(temperatureSensorResistance > VENTILATION_THRESHOLD_OHMS + VENTILATION_HYSTERESIS) fanOn = false;
   
-  if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) warningOn =  true;
-  if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) warningOn =  false;
+  if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) temperatureWarning =  true;
+  if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) temperatureWarning =  false;
   
-  digitalWrite(fanPin, fanOn ? HIGH : LOW); 
-  digitalWrite(warningPin, warningOn ? HIGH : LOW); 
-
-
   /**********************************
   GEARBOX
   **********************************/
@@ -121,6 +133,7 @@ void loop() {
   boolean gearBox3Active = analogToDigital(gearBox3Value);
 
   //conversion en numéro de vitesse
+  gearWarning = false;
   int gear;
        if(gearBox1Active == LOW   && gearBox2Active == LOW  && gearBox3Active == LOW)   gear = 0;
   else if(gearBox1Active == HIGH  && gearBox2Active == LOW  && gearBox3Active == LOW)   gear = 1;
@@ -129,9 +142,13 @@ void loop() {
   else if(gearBox1Active == LOW   && gearBox2Active == LOW  && gearBox3Active == HIGH ) gear = 4;
   else if(gearBox1Active == HIGH  && gearBox2Active == LOW  && gearBox3Active == HIGH ) gear = 5;
   else if(gearBox1Active == HIGH  && gearBox2Active == HIGH && gearBox3Active == HIGH ) gear = 6;
-  else { gear = -1; warningOn = true; }
+  else { gear = -1; gearWarning = true; }
 
-  //Allumage en fonction de la vitesse choisie
+  //Allumage des voyants 
+  globalWarning = oilPressureWarning || gearWarning || temperatureWarning;
+
+  digitalWrite(fanPin, fanOn ? HIGH : LOW); 
+  digitalWrite(warningPin, globalWarning ? HIGH : LOW); 
   digitalWrite(neutralPin, gear == 0 ? HIGH : LOW);
   digitalWrite(gear1Pin, gear == 1 ? HIGH : LOW);
   digitalWrite(gear2Pin, gear == 2 ? HIGH : LOW);
@@ -150,9 +167,9 @@ void loop() {
     text += (float)(temperatureSensorVoltage);
     text += "\tΩ: ";
     text += (float)(temperatureSensorResistance);
-    text += "\tFan/Warning: ";
+    text += "\tFan/Global Warning: ";
     text += fanOn ? "X/" : "-/";
-    text += warningOn ? "X" : "-";
+    text += globalWarning ? "X" : "-";
     text += "\tGear: ";
     text += (int)(gear);
     text += "\t";
@@ -182,7 +199,7 @@ void loop() {
         delay(1000);
       }
   
-       if (warningOn) {
+       if (globalWarning) {
         digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
         delay(3000);                       // wait for a second
         digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
