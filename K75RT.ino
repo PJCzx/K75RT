@@ -1,3 +1,9 @@
+#include <AUnit.h>
+using namespace aunit;
+
+#include "BMW_K75.h"
+BMWK75 k75_rt(1);
+
 int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
 int debugPin              = A0;
 
@@ -54,7 +60,7 @@ void setup() {
   pinMode(gearBox3Pin, INPUT);
   pinMode(debugPin, INPUT);
 
-  //Sories
+  //Sorties
   pinMode(ledPin, OUTPUT);
   pinMode(fanPin, OUTPUT);
   pinMode(warningPin, OUTPUT);
@@ -68,7 +74,12 @@ void setup() {
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
   //if (debug) Serial.begin(9600);
-  
+  Serial.begin(9600);
+  /*******************************************
+   *******************************************
+   *TOBE CLEARED ^^^^^
+   *******************************************
+  *********************************************/
 }
 
 boolean analogToDigital(int value) {
@@ -82,7 +93,7 @@ float mapf(double val, double in_min, double in_max, double out_min, double out_
 }
 
 void loop() {
-
+  TestRunner::run();
   /*********************************
   PRESSION D'HUILE MOTEUR 
   *********************************/
@@ -158,7 +169,7 @@ void loop() {
 
   boolean debugWire = analogToDigital(analogRead(debugPin));
 
-  if (debug == 1 || debug == 3 || debugWire == LOW) {
+  if (debug == 1 || debug == 3 || debugWire == HIGH) {
 
     String text = "";
     text += "TS: ";
@@ -182,7 +193,7 @@ void loop() {
     Serial.println(text);  
     Serial.end();
   }
-  if (debug == 2 || debug == 3 || debugWire == LOW) {
+  if (debug == 2 || debug == 3 || debugWire == HIGH) {
    
       for (int i = 0; i < gear; i++) {
         digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
