@@ -77,7 +77,7 @@ void setup() {
   Serial.begin(9600);
   /*******************************************
    *******************************************
-   *TOBE CLEARED ^^^^^
+   *TOBE CLARIFIED ^^^^^
    *******************************************
   *********************************************/
 }
@@ -93,7 +93,7 @@ float mapf(double val, double in_min, double in_max, double out_min, double out_
 }
 
 void loop() {
-  TestRunner::run();
+  aunit::TestRunner::run();
   /*********************************
   PRESSION D'HUILE MOTEUR 
   *********************************/
