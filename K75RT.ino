@@ -2,7 +2,7 @@
 using namespace aunit;
 
 #include "BMW_K75.h"
-BMWK75 k75_rt(1);
+BMWK75 k75_rt();
 
 int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
 int debugPin              = A0;
@@ -82,16 +82,6 @@ void setup() {
   *********************************************/
 }
 
-boolean analogToDigital(int value) {
-       if (value < 1023*0.3) return LOW;
-  else if (value > 1023*0.7) return HIGH;
-  else return NULL;
-}
-
-float mapf(double val, double in_min, double in_max, double out_min, double out_max) {
-    return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
 void loop() {
   aunit::TestRunner::run();
   /*********************************
@@ -100,7 +90,7 @@ void loop() {
 
   //Mesure de la valeur de la sonde de pression d'huile moteur
   oilPresureSensorValue = analogRead(oilPressureSensorPin);
-  oilPressureWarning = analogToDigital(oilPresureSensorValue) == HIGH ? true : false;
+  oilPressureWarning = helper.analogToDigital(oilPresureSensorValue) == HIGH ? true : false;
 
   /*********************************
   TEMPERATURE MOTEUR ET VENTILATION
@@ -112,10 +102,10 @@ void loop() {
   temperatureSensorValue = analogRead(temperatureSensorPin);
   
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float temperatureSensorVoltage = mapf(temperatureSensorValue, 0, 1023,0,5);
+  float temperatureSensorVoltage = helper.mapf(temperatureSensorValue, 0, 1023,0,5);
 
   //Calcul de la résistance en fonction de la tension mesurée  
-  float temperatureSensorResistance = mapf(temperatureSensorVoltage,0,5,3000,0);// minOhms + ((maxOhms-minOhms) - (temperatureSensorVoltage/5)*(maxOhms-minOhms)) ; //TODO
+  float temperatureSensorResistance = helper.mapf(temperatureSensorVoltage,0,5,3000,0);// minOhms + ((maxOhms-minOhms) - (temperatureSensorVoltage/5)*(maxOhms-minOhms)) ; //TODO
 
   //Conversion de la résistance en température
   //TODO (utile ?)
@@ -139,9 +129,9 @@ void loop() {
   gearBox3Value = analogRead(gearBox3Pin);
 
   //mesure des valeurs des cables de sortie de boite
-  boolean gearBox1Active = analogToDigital(gearBox1Value);
-  boolean gearBox2Active = analogToDigital(gearBox2Value);
-  boolean gearBox3Active = analogToDigital(gearBox3Value);
+  boolean gearBox1Active = helper.analogToDigital(gearBox1Value);
+  boolean gearBox2Active = helper.analogToDigital(gearBox2Value);
+  boolean gearBox3Active = helper.analogToDigital(gearBox3Value);
 
   //conversion en numéro de vitesse
   gearWarning = false;
@@ -167,7 +157,7 @@ void loop() {
   digitalWrite(gear4Pin, gear == 4 ? HIGH : LOW);
   digitalWrite(gear5Pin, gear == 5 ? HIGH : LOW);
 
-  boolean debugWire = analogToDigital(analogRead(debugPin));
+  boolean debugWire = helper.analogToDigital(analogRead(debugPin));
 
   if (debug == 1 || debug == 3 || debugWire == HIGH) {
 
