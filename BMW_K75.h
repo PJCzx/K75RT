@@ -38,7 +38,13 @@ class BMWK75 {
 
     int lightInPinIn;
     bool lightIn = true;
+    
+    int oilPressureSensorPin;
+    float oilPressure;
 
+    int globalWarningPin;
+    bool globalWarning = false;
+    bool oilPressureWarning = false;
         
   protected:
     bool isTestInstance = false;
@@ -50,19 +56,36 @@ class BMWK75 {
     const int LIGHT_SWITH_POSITION_LOW_BEAM = 2;
     const float LIGHT_SENSOR_THRESHOLD_MIN = 0.33;
     const float LIGHT_SENSOR_THRESHOLD_MAX = 0.66;
+    const float OIL_PRESURE_THESHOLD_MIN = 0.33;
 
 
-    BMWK75 (bool isTestInstance) {
-      this->isTestInstance = isTestInstance;
+    BMWK75 () {
+      this->isTestInstance = true;
+    }
+
+    BMWK75 (int lightSensorPinIn, int lightSwitchPosition1PinIn, int lightSwitchPosition2PinIn, int lightInPinIn, int oilPressureSensorPin, int globalWarningPin) {
+      this->isTestInstance = false;
+      this->lightSensorPinIn = lightSensorPinIn;
+      this->lightSwitchPosition1PinIn = lightSwitchPosition1PinIn;
+      this->lightSwitchPosition2PinIn = lightSwitchPosition2PinIn;
+      this->lightInPinIn = lightInPinIn;
+      this->ledRingPinOut = ledRingPinOut;
+      this->headlightPinOut = headlightPinOut;
+      this->oilPressureSensorPin = oilPressureSensorPin;
+      this->globalWarningPin = globalWarningPin;
     }
 
 
     void setup() {
       //Entrées
-      //pinMode(temperatureSensorPin, INPUT);
-      
-      //Sorties
-      //pinMode(ledPin, OUTPUT);
+      pinMode(lightSensorPinIn, INPUT);
+      pinMode(lightSwitchPosition1PinIn, INPUT);
+      pinMode(lightSwitchPosition2PinIn, INPUT);
+      pinMode(lightInPinIn, INPUT);
+
+      //Sorties   
+      pinMode(ledRingPinOut, OUTPUT);
+      pinMode(headlightPinOut, OUTPUT);
     }
 
     //GETTERS
@@ -83,13 +106,52 @@ class BMWK75 {
     }
     
     float getLightSensor () {
+      if (this->isTestInstance != true) {
+        int val = analogRead(lightSensorPinIn);
+        lightSensor = helper.analogToDigital(val) == HIGH ? true : false;
+        //lightSensor = digitalRead(lightSensorPinIn);
+      }
       return lightSensor;
     }
     
     int getLightSwitchPosition() {
+      if (this->isTestInstance != true) {
+        int val1 = analogRead(lightSwitchPosition1PinIn);
+        bool v1 = helper.analogToDigital(val1) == HIGH ? true : false;
+
+        int val2 = analogRead(lightSwitchPosition2PinIn);
+        bool v2 = helper.analogToDigital(val2) == HIGH ? true : false;
+
+             if (v1 == true && v2 == false) lightSwitchPosition = LIGHT_SWITH_POSITION_PARKING_LIGHT;
+        else if (v1 == true && v2 == true)  lightSwitchPosition = LIGHT_SWITH_POSITION_LOW_BEAM;
+        else lightSwitchPosition = LIGHT_SWITH_POSITION_OFF;
+
+      }
       return lightSwitchPosition;
     }
 
+    void setOilPresure (float value) {
+      this->oilPressure = value;
+      this->getOilPresure();
+    }
+
+    float getOilPresure() {
+        if (this->isTestInstance != true) {
+            //Mesure de la valeur de la sonde de pression d'huile moteur
+            float val = analogRead(oilPressureSensorPin);
+            this->oilPressure = helper.mapf(val, 0, 1023,0,1); 
+        }
+        oilPressureWarning = oilPressure <= this->OIL_PRESURE_THESHOLD_MIN ? true: false;
+        return oilPressure;
+    }
+
+    void updateWarnings() {
+       this->globalWarning = this->oilPressureWarning; // || gearWarning || temperatureWarning;
+      
+      digitalWrite(globalWarningPin, globalWarning ? HIGH : LOW);
+      
+    }
+    
     //SETTERS
     void setLightIn (bool value) {
       lightIn = value;
@@ -145,30 +207,13 @@ class BMWK75 {
     void setLightSwitchPosition (int value) {
       this->lightSwitchPosition = value;
       updateLights();
-    }
-
-//NOOOOON
-    //UPDATERS
-    void getGpioIn() {
-       //GET ALL INs AND SET THE CLASS VALUES
-    }
-
-    void setGpioOuts() {
-       //SET ALL OUTs FROM THE CLASS VALUES
-    }
-
-    void refreshGPIO() {
-      getGpioIn();
-      setGpioOuts();
-    }
-//NOOOOON
-    
+    }    
 };
 
 
-BMWK75 tested (true);
+BMWK75 tested;
 
-test(DefaultLightConfiguration) {
+test(DEFAULT_LIGHT_CONFIGURATION) {
   assertEqual(tested.getHeadlight(), true);
   assertEqual(tested.getLedRing(), true);
 }
@@ -257,5 +302,20 @@ test(M_UNIT_LIGHT_IN_LOW_AND_LIGHT_SWICTH_OFF_AUTO) {
         }
   }
 }
+/*
+test(OIL_PRESURE_WARNING) {
+  for(float i = 0; i <= 1; i=i+0.1) {
+    tested.setOilPresure(i);
+    if(i < tested.OIL_PRESURE_THESHOLD_MIN) assertEqual(tested.globalWarning, true);
+    else assertEqual(this->gobalWarning, false);
+  }
+  for(float i = 1, i >= 0; i=i-0.1) {
+    tested.setOilPresure(i);
+    if(i < tested.OIL_PRESURE_THESHOLD_MIN) assertEqual(tested.globalWarning, true);
+    else assertEqual(this->gobalWarning, false);
+  }
+}
+*/
+
 
 #endif

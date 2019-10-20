@@ -2,10 +2,17 @@
 using namespace aunit;
 
 #include "BMW_K75.h"
-BMWK75 k75_rt();
+
+//BMWK75 (int , int , int , int ) {
+BMWK75 bmw(
+  /*lightSensorPinIn*/ A1,
+  /*lightSwitchPosition1PinIn*/4,
+  /*lightSwitchPosition2PinIn*/ 5,
+  /*lightInPinIn*/ 6,
+  /*oilPressureSensorPin*/A3,
+  /*globalWarningPin*/ 3);
 
 int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
-int debugPin              = A0;
 
 int temperatureSensorPin  = A2;
 int oilPressureSensorPin  = A3;
@@ -13,6 +20,7 @@ int gearBox1Pin           = A5;
 int gearBox2Pin           = A6;
 int gearBox3Pin           = A7;
 
+int rpmPin                = 1;
 int fanPin                = 2;
 int warningPin            = 3;
 int neutralPin            = 7;
@@ -28,6 +36,13 @@ float oilPresureSensorValue = 0;
 float gearBox1Value = 0;
 float gearBox2Value = 0;
 float gearBox3Value = 0;
+unsigned long int currentMillis;
+unsigned long int previousMillis;
+unsigned long int timeSpentAtPreviousRPMState;
+bool currentRPMState;
+bool previousRPMState;
+bool rpmWarning;
+float rpm;
 
  //Constantes
   //Définition de seuils
@@ -44,6 +59,9 @@ const float VENTILATION_HYSTERESIS = 1000;
 const float WARNING_THRESHOLD_OHMS = 143;
 const float WARNING_HYSTERESIS = 100;
 
+int SHIFT_LIGHT_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
+int SHIFT_LIGHT_THERSHOLD_MIN = 8400;
+
 boolean fanOn = false;
 
 boolean globalWarning = false;
@@ -58,7 +76,6 @@ void setup() {
   pinMode(gearBox1Pin, INPUT);
   pinMode(gearBox2Pin, INPUT);
   pinMode(gearBox3Pin, INPUT);
-  pinMode(debugPin, INPUT);
 
   //Sorties
   pinMode(ledPin, OUTPUT);
@@ -71,27 +88,66 @@ void setup() {
   pinMode(gear4Pin, OUTPUT);
   pinMode(gear5Pin, OUTPUT);
 
+  bmw.setup();
+
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
-  //if (debug) Serial.begin(9600);
   Serial.begin(9600);
-  /*******************************************
-   *******************************************
-   *TOBE CLARIFIED ^^^^^
-   *******************************************
-  *********************************************/
+
+  currentMillis = 0;
+  previousMillis = 0;
+  currentRPMState = LOW;
+  previousRPMState - LOW;
+  timeSpentAtPreviousRPMState = 0;
+  rpm = 0;
+  rpmWarning = false;
 }
 
 void loop() {
   aunit::TestRunner::run();
-  /*********************************
-  PRESSION D'HUILE MOTEUR 
+
+  bmw.getLightIn();
+  bmw.getLightSensor();
+  bmw.getLightSwitchPosition();
+  bmw.getOilPresure();
+  bmw.updateWarnings();
+
+  bmw.updateLights();
+
+ /*********************************
+  RPM & SHIFTLIGHT
   *********************************/
 
-  //Mesure de la valeur de la sonde de pression d'huile moteur
-  oilPresureSensorValue = analogRead(oilPressureSensorPin);
-  oilPressureWarning = helper.analogToDigital(oilPresureSensorValue) == HIGH ? true : false;
-
+  //If code run over 50 days : Managin time overflow
+  if(currentMillis < previousMillis) {
+    previousMillis = currentMillis;
+  }
+  
+  //Backupbing before update
+  previousMillis = currentMillis;
+  
+  //update
+  currentMillis = millis();
+  
+  //Get tachymeter state
+  currentRPMState = digitalRead(rpmPin);
+  
+  //if state changed since last check
+  if(currentRPMState == previousRPMState) {
+    timeSpentAtPreviousRPMState += currentMillis - previousMillis;
+  } else {
+    previousRPMState = currentRPMState;
+    int segments = 2;
+    float secondesParSegments = (float)timeSpentAtPreviousRPMState*2/1000;
+    rpm = 60.0/secondesParSegments*segments;
+    if(rpm >= SHIFT_LIGHT_THERSHOLD_MAX){
+      rpmWarning = true;
+    } else if(rpm <= SHIFT_LIGHT_THERSHOLD_MIN){
+      rpmWarning = false;
+    }
+    timeSpentAtPreviousRPMState = 0;
+  }
+   
   /*********************************
   TEMPERATURE MOTEUR ET VENTILATION
   *********************************/
@@ -146,7 +202,7 @@ void loop() {
   else { gear = -1; gearWarning = true; }
 
   //Allumage des voyants 
-  globalWarning = oilPressureWarning || gearWarning || temperatureWarning;
+  globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
 
   digitalWrite(fanPin, fanOn ? HIGH : LOW); 
   digitalWrite(warningPin, globalWarning ? HIGH : LOW); 
@@ -157,9 +213,7 @@ void loop() {
   digitalWrite(gear4Pin, gear == 4 ? HIGH : LOW);
   digitalWrite(gear5Pin, gear == 5 ? HIGH : LOW);
 
-  boolean debugWire = helper.analogToDigital(analogRead(debugPin));
-
-  if (debug == 1 || debug == 3 || debugWire == HIGH) {
+  if (debug == 1 || debug == 3) {
 
     String text = "";
     text += "TS: ";
@@ -183,7 +237,7 @@ void loop() {
     Serial.println(text);  
     Serial.end();
   }
-  if (debug == 2 || debug == 3 || debugWire == HIGH) {
+  if (debug == 2 || debug == 3) {
    
       for (int i = 0; i < gear; i++) {
         digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
