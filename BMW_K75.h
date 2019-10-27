@@ -132,7 +132,6 @@ class BMWK75 {
 
     void setOilPresure (float value) {
       this->oilPressure = value;
-      this->getOilPresure();
     }
 
     float getOilPresure() {
@@ -306,6 +305,7 @@ test(M_UNIT_LIGHT_IN_LOW_AND_LIGHT_SWICTH_OFF_AUTO) {
 test(OIL_PRESURE_WARNING) {
   for(float i = 0; i <= 1; i=i+0.1) {
     tested.setOilPresure(i);
+    tested.getOilPresure();
     if(i < tested.OIL_PRESURE_THESHOLD_MIN) assertEqual(tested.globalWarning, true);
     else assertEqual(this->gobalWarning, false);
   }

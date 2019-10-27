@@ -12,24 +12,33 @@ BMWK75 bmw(
   /*oilPressureSensorPin*/A3,
   /*globalWarningPin*/ 3);
 
-int debug = 0; //0 OFF, 1 SERIAL, 2 LED, 3 SERIAL + LED
+int temperatureSensorPin      = A0;
+int oilPressureSensorPin      = A1;
+int fuelSensorPin             = A2;
 
-int temperatureSensorPin  = A2;
-int oilPressureSensorPin  = A3;
-int gearBox1Pin           = A5;
-int gearBox2Pin           = A6;
-int gearBox3Pin           = A7;
+int lightSwitchPosition1PinIn = A3;
+int lightSwitchPosition2PinIn = A4;
+int ledRingPinOut             = 0; // TO BE FOUND
+int headlightPinOut           = 0; // TO BE FOUND
+int lightSensorPinIn          = 0; // TO BE FOUND
+int lightInPinIn              = 0; // TO BE FOUND
 
-int rpmPin                = 1;
-int fanPin                = 2;
-int warningPin            = 3;
+int gearBox1Pin               = A5;
+int gearBox2Pin               = A6;
+int gearBox3Pin               = A7;
+
+int rpmPin                = 2;
+int fanPin                = 3;
+int speedPin              = 4;
+int fuelIndicatorPin      = 5;
+
 int neutralPin            = 7;
 int gear1Pin              = 8;
 int gear2Pin              = 9;
 int gear3Pin              = 10;            
 int gear4Pin              = 11;
 int gear5Pin              = 12;
-int ledPin                = 13;      // select the pin for the LED
+int warningPin            = 13;
 
 float temperatureSensorValue = 0;  // variable to store the value coming from the sensor
 float oilPresureSensorValue = 0;
@@ -38,11 +47,19 @@ float gearBox2Value = 0;
 float gearBox3Value = 0;
 unsigned long int currentMillis;
 unsigned long int previousMillis;
+
+int serialDelay = 500;
+int serialLastSent = 0;
+
 unsigned long int timeSpentAtPreviousRPMState;
 bool currentRPMState;
 bool previousRPMState;
-bool rpmWarning;
 float rpm;
+
+unsigned long int timeSpentAtPreviousSpeedState;
+bool currentSpeedState;
+bool previousSpeedState;
+float kmh;
 
  //Constantes
   //Définition de seuils
@@ -60,7 +77,10 @@ const float WARNING_THRESHOLD_OHMS = 143;
 const float WARNING_HYSTERESIS = 100;
 
 int SHIFT_LIGHT_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
-int SHIFT_LIGHT_THERSHOLD_MIN = 8400;
+int SHIFT_LIGHT_THERSHOLD_MIN = 8400; // LA ZONE SUR LE COMPTEUR BMX EST ENTRE 8500 ET 9000
+
+int FUEL_LEVEL_THERSHOLD_MAX = 15; //S'allume en dessous de 10%
+int FUEL_LEVEL_THERSHOLD_MIN = 10; //S'éteint au dessus de 15%
 
 boolean fanOn = false;
 
@@ -68,20 +88,22 @@ boolean globalWarning = false;
 boolean oilPressureWarning = false;
 boolean gearWarning = false;
 boolean temperatureWarning = false;
+boolean rpmWarning = false;
 
 void setup() {
   //Entrées
   pinMode(temperatureSensorPin, INPUT);
   pinMode(oilPressureSensorPin, INPUT);
+  pinMode(fuelSensorPin, INPUT);
   pinMode(gearBox1Pin, INPUT);
   pinMode(gearBox2Pin, INPUT);
   pinMode(gearBox3Pin, INPUT);
 
   //Sorties
-  pinMode(ledPin, OUTPUT);
   pinMode(fanPin, OUTPUT);
   pinMode(warningPin, OUTPUT);
   pinMode(neutralPin, OUTPUT);
+  pinMode(fuelIndicatorPin, OUTPUT);
   pinMode(gear1Pin, OUTPUT);
   pinMode(gear2Pin, OUTPUT);
   pinMode(gear3Pin, OUTPUT);
@@ -96,28 +118,25 @@ void setup() {
 
   currentMillis = 0;
   previousMillis = 0;
+  
   currentRPMState = LOW;
-  previousRPMState - LOW;
+  previousRPMState = LOW;
   timeSpentAtPreviousRPMState = 0;
   rpm = 0;
   rpmWarning = false;
+
+  currentSpeedState = LOW;
+  previousSpeedState = LOW;
+  timeSpentAtPreviousSpeedState = 0;
+  kmh = 0.0;
 }
 
 void loop() {
-  aunit::TestRunner::run();
-
-  bmw.getLightIn();
-  bmw.getLightSensor();
-  bmw.getLightSwitchPosition();
-  bmw.getOilPresure();
-  bmw.updateWarnings();
-
-  bmw.updateLights();
-
+  //aunit::TestRunner::run();
+  
  /*********************************
-  RPM & SHIFTLIGHT
+  TIME MANAGEMENT
   *********************************/
-
   //If code run over 50 days : Managin time overflow
   if(currentMillis < previousMillis) {
     previousMillis = currentMillis;
@@ -128,7 +147,20 @@ void loop() {
   
   //update
   currentMillis = millis();
-  
+
+  /**********************************
+  LIGHTS
+  **********************************/
+  bmw.updateLights();
+
+  /**********************************
+  OIL
+  **********************************/
+  bmw.getOilPresure();
+
+ /*********************************
+  RPM & SHIFTLIGHT
+  *********************************/  
   //Get tachymeter state
   currentRPMState = digitalRead(rpmPin);
   
@@ -147,14 +179,47 @@ void loop() {
     }
     timeSpentAtPreviousRPMState = 0;
   }
-   
+
+  /**********************************
+  SPEED
+  **********************************/
+  //Get speed state
+  currentRPMState = digitalRead(speedPin);
+  
+  //if state changed since last check
+  if(currentSpeedState == previousSpeedState) {
+    timeSpentAtPreviousSpeedState += currentMillis - previousMillis;
+  } else {
+    previousSpeedState = currentSpeedState;
+
+    //x2 parce qu'on mesure qu'un seul etat
+    float millisecondesParSegments = (float)timeSpentAtPreviousSpeedState*2/1000;
+    
+    //PREFERE NOMBRE DE SEGMENT POUR 1 tour de roue
+
+    int circonferenceMM = 1000;
+    int segments = 1;
+
+    float distancePourUnSegment = circonferenceMM/segments;
+    float vitesseEnMMparMilisec = distancePourUnSegment/millisecondesParSegments;
+    /*
+    vitesseEnMMparMilisec/1000 > Metre
+    vitesseEnMMparMilisec/1000000 > vitesseEnKMparMilisec
+    vitesseEnKMparMilisec*1000*60*60 > Heure
+    */
+    kmh = vitesseEnMMparMilisec/1000/1000*1000*60*60;
+    
+
+    timeSpentAtPreviousSpeedState = 0;
+  }
+  
+  
   /*********************************
   TEMPERATURE MOTEUR ET VENTILATION
   *********************************/
 
   //Mesure de la valeur de la sonde température moteur
-
-
+  
   temperatureSensorValue = analogRead(temperatureSensorPin);
   
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
@@ -176,6 +241,9 @@ void loop() {
   
   if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) temperatureWarning =  true;
   if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) temperatureWarning =  false;
+
+  digitalWrite(fanPin, fanOn ? HIGH : LOW); 
+
   
   /**********************************
   GEARBOX
@@ -201,11 +269,6 @@ void loop() {
   else if(gearBox1Active == HIGH  && gearBox2Active == HIGH && gearBox3Active == HIGH ) gear = 6;
   else { gear = -1; gearWarning = true; }
 
-  //Allumage des voyants 
-  globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
-
-  digitalWrite(fanPin, fanOn ? HIGH : LOW); 
-  digitalWrite(warningPin, globalWarning ? HIGH : LOW); 
   digitalWrite(neutralPin, gear == 0 ? HIGH : LOW);
   digitalWrite(gear1Pin, gear == 1 ? HIGH : LOW);
   digitalWrite(gear2Pin, gear == 2 ? HIGH : LOW);
@@ -213,8 +276,35 @@ void loop() {
   digitalWrite(gear4Pin, gear == 4 ? HIGH : LOW);
   digitalWrite(gear5Pin, gear == 5 ? HIGH : LOW);
 
-  if (debug == 1 || debug == 3) {
+  /**********************************
+  FUEL
+  **********************************/
+  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
+  float fuelSensor = helper.mapf(analogRead(fuelSensorPin), 0, 1023, 0, 100);
 
+  if(fuelSensor <= FUEL_LEVEL_THERSHOLD_MIN) {
+    digitalWrite(fuelIndicatorPin, HIGH); 
+  } else if(fuelSensor >= FUEL_LEVEL_THERSHOLD_MAX) {
+    digitalWrite(fuelIndicatorPin, LOW); 
+  }
+
+  /**********************************
+  ALERTE
+  **********************************/
+
+  globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
+  bmw.updateWarnings();
+
+  digitalWrite(warningPin, globalWarning ? HIGH : LOW); 
+
+  
+
+  /*********************************************
+  SERIAL WRITE
+  *********************************************/
+  if (abs(currentMillis - serialLastSent) >= serialDelay) {
+    serialLastSent = currentMillis;
+    
     String text = "";
     text += "TS: ";
     text += (float)(temperatureSensorValue);
@@ -237,33 +327,7 @@ void loop() {
     Serial.println(text);  
     Serial.end();
   }
-  if (debug == 2 || debug == 3) {
-   
-      for (int i = 0; i < gear; i++) {
-        digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-        delay(200);                       // wait for a second
-        digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-        delay(200);
-        if (i == gear-1) delay(1000);
-      }
-  
-      if (fanOn) {
-        digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-        delay(1000);                       // wait for a second
-        digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-        delay(1000);
-      }
-  
-       if (globalWarning) {
-        digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-        delay(3000);                       // wait for a second
-        digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-        delay(3000);
-      }
-       
-      delay(2000); 
-    }        
-  
+    
   // delay in between reads for stability
   delay(1); 
 }
