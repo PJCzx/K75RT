@@ -1,7 +1,13 @@
 #include <AUnit.h>
 using namespace aunit;
 
-#include "BMW_K75.h"
+#define BLYNK_USE_DIRECT_CONNECT
+#include <SoftwareSerial.h>
+SoftwareSerial DebugSerial(0, 1); // RX, TX
+#define BLYNK_PRINT DebugSerial
+#include <BlynkSimpleSerialBLE.h>
+
+char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
 
 int temperatureSensorPin      = A0;
 int oilPressureSensorPin      = A1;
@@ -12,7 +18,7 @@ int lightSwitchPosition2PinIn = A4;
 int ledRingPinOut             = 0; // TO BE FOUND
 int headlightPinOut           = 0; // TO BE FOUND
 int lightSensorPinIn          = 0; // TO BE FOUND
-int lightInPinIn              = 0; // TO BE FOUND
+int mUnitLightOutput          = 0; // TO BE FOUND
 
 int gearBox1Pin               = A5;
 int gearBox2Pin               = A6;
@@ -30,6 +36,52 @@ int gear3Pin              = 10;
 int gear4Pin              = 11;
 int gear5Pin              = 12;
 int warningPin            = 13;
+
+/*********************************
+  BLYNK WIDGETS
+*********************************/
+    //LIGHTS
+      //INPUTS
+      WidgetLED Blynk_mUnitLed(0);
+      int Blynk_lightSwitchPosValueDisplay = V1;
+      //OUTPUTS
+      WidgetLED Blynk_ledRingLed(2);
+      WidgetLED Blynk_headlightLed(3);
+      WidgetLED Blynk_highBeamLed(4);
+
+    
+    //OIL
+      //INPUTS
+      //OUTPUTS
+          
+    //RPM & SHIFTLIGHT
+      //INPUTS
+      //OUTPUTS
+          
+    //SPEED
+       //INPUTS
+       //OUTPUTS
+         
+    //TEMPERATURE MOTEUR ET VENTILATION
+      //INPUTS
+     
+      //OUTPUTS
+
+      
+    //GEARBOX
+      //INPUTS
+      //OUTPUTS
+    
+          
+    //FUEL
+      //INPUTS
+      //OUTPUTS
+          
+    //ALERTE
+      //INPUTS
+      //OUTPUTS
+    
+   
 
 float temperatureSensorValue = 0;  // variable to store the value coming from the sensor
 float oilPresureSensorValue = 0;
@@ -99,6 +151,12 @@ boolean analogToDigital(int value) {
 }
 
 void setup() {
+  DebugSerial.begin(9600);
+  DebugSerial.println("Waiting for connections...");
+  Serial.begin(9600);
+  Blynk.begin(Serial, auth);
+
+ 
   //Entrées
   pinMode(temperatureSensorPin, INPUT);
   pinMode(oilPressureSensorPin, INPUT);
@@ -106,6 +164,7 @@ void setup() {
   pinMode(gearBox1Pin, INPUT);
   pinMode(gearBox2Pin, INPUT);
   pinMode(gearBox3Pin, INPUT);
+  pinMode(mUnitLightOutput, INPUT);
 
   //Sorties
   pinMode(fanPin, OUTPUT);
@@ -117,12 +176,12 @@ void setup() {
   pinMode(gear3Pin, OUTPUT);
   pinMode(gear4Pin, OUTPUT);
   pinMode(gear5Pin, OUTPUT);
-
-
+  pinMode(ledRingPinOut, OUTPUT);
+  pinMode(headlightPinOut, OUTPUT);
+  pinMode(lightSensorPinIn, OUTPUT);
+ 
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
-  Serial.begin(9600);
-
   currentMillis = 0;
   previousMillis = 0;
   
@@ -138,8 +197,18 @@ void setup() {
   kmh = 0.0;
 }
 
+
+
+int readCount = 0;
+BLYNK_READ(V3)
+{
+  // This command writes Arduino's uptime in seconds to Virtual Pin (5)
+  Blynk.virtualWrite(V3, readCount++);
+  
+}
+
 void loop() {
-  //aunit::TestRunner::run();
+  Blynk.run();
   
  /*********************************
   TIME MANAGEMENT
@@ -154,43 +223,95 @@ void loop() {
   
   //update
   currentMillis = millis();
+  Blynk.virtualWrite(V31, (previousMillis/1000));
 
   /**********************************
   LIGHTS
   **********************************/
-  bool mUnitLightOutput = false; //TODO : get M-Unit light output
-  if(mUnitLightOutput == false) {
-        //TODO : switch headlight ON
-        //TODO : switch ledring OFF
+  bool mUnitLightOutput = digitalRead(mUnitLightOutput); 
+  
+  if(mUnitLightOutput == HIGH) {
+        // IN THIS CASE, M-UNIT ASK LIGHS TOBE OFF AND WILL TRIGGER HIGHBEAM
+        Blynk_mUnitLed.off();
+        Blynk_highBeamLed.on();
+        
+        //switch headlight OFF
+        digitalWrite(headlightPinOut, LOW);
+        Blynk_headlightLed.off();
+        
+        //switch ledring OFF
+        digitalWrite(ledRingPinOut, LOW);
+        Blynk_ledRingLed.off();
+        
+        
       } else {
-        //Light swith & Light sensor value
-        int lightSwitchPosition = 0; //TODO : get switch position
-        int lightSensorValue = 0; //TODO : get lights sensor value
+        //High beam should be off according to M-Unit
+        Blynk_mUnitLed.on();
+        Blynk_highBeamLed.off();
+        
+        //Light swith value
+        int lightSwitchPosition = 0;
+        
+        if (digitalRead(lightSwitchPosition1PinIn) == HIGH) {
+          if (digitalRead(lightSwitchPosition2PinIn) == HIGH) {
+            lightSwitchPosition = 2;
+            
+            } else {
+              lightSwitchPosition = 1;
+          }
+        } else {
+          lightSwitchPosition = 0;
+        }
+
+        //Light sensor value
+        int lightSensorValue = analogRead(lightSensorPinIn);
         
         if(lightSwitchPosition == LIGHT_SWITH_POSITION_PARKING_LIGHT) {
-            //TODO : switch headlight OFF
-            //TODO : switch ledring ON
+            Blynk.virtualWrite(V1, "PARKING_LIGHT");
+            
+            //switch headlight OFF
+            digitalWrite(headlightPinOut, LOW);
+            Blynk_headlightLed.off();
+            
+            //switch ledring ON
+            digitalWrite(ledRingPinOut, HIGH);
+            Blynk_ledRingLed.on();
+
          
           } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_LOW_BEAM) {
-            //TODO : switch headlight ON
-            //TODO : switch ledring OFF
+            Blynk.virtualWrite(V1, "LOW_BEAM");
+
+            //switch headlight ON
+            digitalWrite(headlightPinOut, HIGH);
+            Blynk_headlightLed.on();
+            
+            //switch ledring OFF
+            digitalWrite(ledRingPinOut, LOW);
+            Blynk_ledRingLed.off();
          
           } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_OFF) {
+            Blynk.virtualWrite(V1, "OFF");
+
             if(lightSensorValue >= LIGHT_SENSOR_THRESHOLD_MAX) {
-            //TODO : switch headlight OFF
-            //TODO : switch ledring ON
+              //switch headlight OFF
+              digitalWrite(headlightPinOut, LOW);
+              Blynk_headlightLed.off();
+              
+              //switch ledring ON
+              digitalWrite(ledRingPinOut, HIGH);
+              Blynk_ledRingLed.on();
               
             } else if(lightSensorValue <= LIGHT_SENSOR_THRESHOLD_MIN) {
-            //TODO : switch headlight ON
-            //TODO : switch ledring OFF
+              //switch headlight ON
+              digitalWrite(headlightPinOut, HIGH);
+              Blynk_headlightLed.on();
+              
+              //switch ledring OFF
+              digitalWrite(ledRingPinOut, LOW);
+              Blynk_ledRingLed.off();
 
             }    
-          } else {
-            //ERROR CASE
-            //TODO : switch headlight ON
-            //TODO : switch ledring ON
- 
-          } 
+          }
         }
 
   /**********************************
@@ -198,7 +319,7 @@ void loop() {
   **********************************/
   float val = analogRead(oilPressureSensorPin);
   float oilPressure = mapf(val, 0, 1023,0,1); 
-  oilPressureWarning = oilPressure <= OIL_PRESURE_THESHOLD_MIN ? true: false;
+  oilPressureWarning = oilPressure <= OIL_PRESURE_THESHOLD_MIN ? true : false;
 
  /*********************************
   RPM & SHIFTLIGHT
@@ -268,7 +389,7 @@ void loop() {
   float temperatureSensorVoltage = mapf(temperatureSensorValue, 0, 1023,0,5);
 
   //Calcul de la résistance en fonction de la tension mesurée  
-  float temperatureSensorResistance = mapf(temperatureSensorVoltage,0,5,3000,0);// minOhms + ((maxOhms-minOhms) - (temperatureSensorVoltage/5)*(maxOhms-minOhms)) ; //TODO
+  float temperatureSensorResistance = mapf(temperatureSensorVoltage,0,5,3000,0);
 
   //Conversion de la résistance en température
   //TODO (utile ?)
@@ -343,6 +464,8 @@ void loop() {
   /*********************************************
   SERIAL WRITE
   *********************************************/
+  /*
+   
   if (abs(currentMillis - serialLastSent) >= serialDelay) {
     serialLastSent = currentMillis;
 
@@ -408,7 +531,6 @@ void loop() {
     Serial.println(text);  
     Serial.end();
   }
-    
-  // delay in between reads for stability
-  delay(1); 
+  */
+
 }
