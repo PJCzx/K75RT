@@ -1,33 +1,31 @@
-#include <AUnit.h>
-using namespace aunit;
-
+#include "PCF8574.h"
+/*
 #define BLYNK_USE_DIRECT_CONNECT
 #include <SoftwareSerial.h>
-SoftwareSerial DebugSerial(0, 1); // RX, TX
 #define BLYNK_PRINT DebugSerial
 #include <BlynkSimpleSerialBLE.h>
 
+SoftwareSerial DebugSerial(0, 1); // RX, TX
 char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
+*/
 
-int temperatureSensorPin      = A0;
-int oilPressureSensorPin      = A1;
-int fuelSensorPin             = A2;
+//ANALOGS A0 -> A7 
 
-int lightSwitchPosition1PinIn = A3;
-int lightSwitchPosition2PinIn = A4;
-int ledRingPinOut             = 0; // TO BE FOUND
-int headlightPinOut           = 0; // TO BE FOUND
-int lightSensorPinIn          = 0; // TO BE FOUND
-int mUnitLightOutput          = 0; // TO BE FOUND
+int lightSensorPinIn          = A0; 
+int temperatureSensorPinIn    = A1;
+int oilPressureSensorPinIn    = A2;
+int fuelSensorPinIn           = A3;
+// A4 + A5 -> SDA + SCL
+int fuelIndicatorPin          = A6;
+int available_2               = A7;
 
-int gearBox1Pin               = A5;
-int gearBox2Pin               = A6;
-int gearBox3Pin               = A7;
 
-int rpmPin                = 2;
-int fanPin                = 3;
-int speedPin              = 4;
-int fuelIndicatorPin      = 5;
+//DIGITALS 2 -> 13
+
+int mUnitLightOutputPinIn = 2;
+int rpmPin                = 3;
+int fanPin                = 4;
+int speedPin              = 5;
 
 int neutralPin            = 7;
 int gear1Pin              = 8;
@@ -37,57 +35,24 @@ int gear4Pin              = 11;
 int gear5Pin              = 12;
 int warningPin            = 13;
 
-/*********************************
-  BLYNK WIDGETS
-*********************************/
-    //LIGHTS
-      //INPUTS
-      WidgetLED Blynk_mUnitLed(0);
-      int Blynk_lightSwitchPosValueDisplay = V1;
-      //OUTPUTS
-      WidgetLED Blynk_ledRingLed(2);
-      WidgetLED Blynk_headlightLed(3);
-      WidgetLED Blynk_highBeamLed(4);
+//( A4 : SDA / A5 : SCL)
+PCF8574 pcf8574_1(0x20); //P0 -> P7
 
-    
-    //OIL
-      //INPUTS
-      //OUTPUTS
-          
-    //RPM & SHIFTLIGHT
-      //INPUTS
-      //OUTPUTS
-          
-    //SPEED
-       //INPUTS
-       //OUTPUTS
-         
-    //TEMPERATURE MOTEUR ET VENTILATION
-      //INPUTS
-     
-      //OUTPUTS
+int lightSwitchPosition1PinIn = 0;
+int lightSwitchPosition2PinIn = 1;
+int ledRingPinOut             = 2;
+int headlightPinOut           = 3;
+int gearBox1PinIn             = 4;
+int gearBox2PinIn             = 5;
+int gearBox3PinIn             = 6;
+//P7 AVAILABLE
 
-      
-    //GEARBOX
-      //INPUTS
-      //OUTPUTS
-    
-          
-    //FUEL
-      //INPUTS
-      //OUTPUTS
-          
-    //ALERTE
-      //INPUTS
-      //OUTPUTS
-    
-   
-
-float temperatureSensorValue = 0;  // variable to store the value coming from the sensor
+float temperatureSensorValue = 0;  
 float oilPresureSensorValue = 0;
 float gearBox1Value = 0;
 float gearBox2Value = 0;
 float gearBox3Value = 0;
+
 unsigned long int currentMillis;
 unsigned long int previousMillis;
 
@@ -151,20 +116,24 @@ boolean analogToDigital(int value) {
 }
 
 void setup() {
-  DebugSerial.begin(9600);
-  DebugSerial.println("Waiting for connections...");
-  Serial.begin(9600);
-  Blynk.begin(Serial, auth);
+  /*
+  //DebugSerial.begin(9600);
+  //DebugSerial.println("Waiting for connections...");
+  //Serial.begin(9600);
+  //Blynk.begin(Serial, auth);
+  */
 
- 
+  //TODO : REVOIR TOUTES LES I/O
+  
   //Entrées
-  pinMode(temperatureSensorPin, INPUT);
-  pinMode(oilPressureSensorPin, INPUT);
-  pinMode(fuelSensorPin, INPUT);
-  pinMode(gearBox1Pin, INPUT);
-  pinMode(gearBox2Pin, INPUT);
-  pinMode(gearBox3Pin, INPUT);
-  pinMode(mUnitLightOutput, INPUT);
+  pinMode(temperatureSensorPinIn, INPUT);
+  pinMode(oilPressureSensorPinIn, INPUT);
+  pinMode(fuelSensorPinIn, INPUT);
+  pinMode(gearBox1PinIn, INPUT);
+  pinMode(gearBox2PinIn, INPUT);
+  pinMode(gearBox3PinIn, INPUT);
+  pinMode(mUnitLightOutputPinIn, INPUT);
+  pinMode(lightSensorPinIn, INPUT);
 
   //Sorties
   pinMode(fanPin, OUTPUT);
@@ -178,7 +147,17 @@ void setup() {
   pinMode(gear5Pin, OUTPUT);
   pinMode(ledRingPinOut, OUTPUT);
   pinMode(headlightPinOut, OUTPUT);
-  pinMode(lightSensorPinIn, OUTPUT);
+
+  pcf8574_1.pinMode(lightSwitchPosition1PinIn, INPUT);
+  pcf8574_1.pinMode(lightSwitchPosition2PinIn, INPUT);
+  pcf8574_1.pinMode(ledRingPinOut, OUTPUT);
+  pcf8574_1.pinMode(headlightPinOut, OUTPUT);
+  pcf8574_1.pinMode(gearBox1PinIn, INPUT);
+  pcf8574_1.pinMode(gearBox2PinIn, INPUT);
+  pcf8574_1.pinMode(gearBox3PinIn, INPUT);
+  pcf8574_1.pinMode(P7, OUTPUT);
+
+  pcf8574_1.begin();
  
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
@@ -195,25 +174,49 @@ void setup() {
   previousSpeedState = LOW;
   timeSpentAtPreviousSpeedState = 0;
   kmh = 0.0;
+
 }
 
 
-
+/*
 int readCount = 0;
-BLYNK_READ(V3)
+BLYNK_READ(V31)
 {
-  // This command writes Arduino's uptime in seconds to Virtual Pin (5)
-  Blynk.virtualWrite(V3, readCount++);
-  
+  Blynk.virtualWrite(V31, readCount++); 
 }
+BLYNK_READ(V30)
+{
+  Blynk.virtualWrite(V30, "N"); 
+}
+int aValue = 0;
+BLYNK_WRITE(V0) {
+  int pinValue = param.asInt(); // assigning incoming value from pin V1 to a variable
+  // You can also use:
+  // String i = param.asStr();
+  // double d = param.asDouble();
+  Serial.print("V1 Slider value is: ");
+  Serial.println(pinValue);
+  aValue = pinValue;
+  analogWrite(1, aValue);
+  int input0 = analogRead(0);
+  Blynk.virtualWrite(V5, input0); 
+}
+
+BLYNK_READ(V5)
+{
+  int input0 = analogRead(0);
+  Blynk.virtualWrite(V5, input0); 
+}
+*/
 
 void loop() {
-  Blynk.run();
+  //Blynk.run();
   
  /*********************************
   TIME MANAGEMENT
   *********************************/
-  //If code run over 50 days : Manage time overflow
+  
+  ///If code run over 50 days : Manage time overflow
   if(currentMillis < previousMillis) {
     previousMillis = currentMillis;
   }
@@ -223,37 +226,37 @@ void loop() {
   
   //update
   currentMillis = millis();
-  Blynk.virtualWrite(V31, (previousMillis/1000));
-
+  
   /**********************************
   LIGHTS
   **********************************/
-  bool mUnitLightOutput = digitalRead(mUnitLightOutput); 
   
-  if(mUnitLightOutput == HIGH) {
+  bool mUnitLightVal = digitalRead(mUnitLightOutputPinIn); 
+  
+  if(mUnitLightVal == HIGH) {
         // IN THIS CASE, M-UNIT ASK LIGHS TOBE OFF AND WILL TRIGGER HIGHBEAM
-        Blynk_mUnitLed.off();
-        Blynk_highBeamLed.on();
+        //Blynk_mUnitLed.off();
+        //Blynk_highBeamLed.on();
         
         //switch headlight OFF
-        digitalWrite(headlightPinOut, LOW);
-        Blynk_headlightLed.off();
+        pcf8574_1.digitalWrite(headlightPinOut, LOW);
+        //Blynk_headlightLed.off();
         
         //switch ledring OFF
-        digitalWrite(ledRingPinOut, LOW);
-        Blynk_ledRingLed.off();
+        pcf8574_1.digitalWrite(ledRingPinOut, LOW);
+        //Blynk_ledRingLed.off();
         
         
       } else {
         //High beam should be off according to M-Unit
-        Blynk_mUnitLed.on();
-        Blynk_highBeamLed.off();
+        //Blynk_mUnitLed.on();
+        //Blynk_highBeamLed.off();
         
         //Light swith value
         int lightSwitchPosition = 0;
         
-        if (digitalRead(lightSwitchPosition1PinIn) == HIGH) {
-          if (digitalRead(lightSwitchPosition2PinIn) == HIGH) {
+        if (pcf8574_1.digitalRead(lightSwitchPosition1PinIn) == HIGH) {
+          if (pcf8574_1.digitalRead(lightSwitchPosition2PinIn) == HIGH) {
             lightSwitchPosition = 2;
             
             } else {
@@ -267,63 +270,66 @@ void loop() {
         int lightSensorValue = analogRead(lightSensorPinIn);
         
         if(lightSwitchPosition == LIGHT_SWITH_POSITION_PARKING_LIGHT) {
-            Blynk.virtualWrite(V1, "PARKING_LIGHT");
+            //Blynk.virtualWrite(V1, "PARKING_LIGHT");
             
             //switch headlight OFF
-            digitalWrite(headlightPinOut, LOW);
-            Blynk_headlightLed.off();
+            pcf8574_1.digitalWrite(headlightPinOut, LOW);
+            //Blynk_headlightLed.off();
             
             //switch ledring ON
-            digitalWrite(ledRingPinOut, HIGH);
-            Blynk_ledRingLed.on();
+            pcf8574_1.digitalWrite(ledRingPinOut, HIGH);
+            //Blynk_ledRingLed.on();
 
          
           } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_LOW_BEAM) {
-            Blynk.virtualWrite(V1, "LOW_BEAM");
+            //Blynk.virtualWrite(V1, "LOW_BEAM");
 
             //switch headlight ON
-            digitalWrite(headlightPinOut, HIGH);
-            Blynk_headlightLed.on();
+            pcf8574_1.digitalWrite(headlightPinOut, HIGH);
+            //Blynk_headlightLed.on();
             
             //switch ledring OFF
-            digitalWrite(ledRingPinOut, LOW);
-            Blynk_ledRingLed.off();
+            pcf8574_1.digitalWrite(ledRingPinOut, LOW);
+            //Blynk_ledRingLed.off();
          
           } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_OFF) {
-            Blynk.virtualWrite(V1, "OFF");
+            //Blynk.virtualWrite(V1, "OFF");
 
             if(lightSensorValue >= LIGHT_SENSOR_THRESHOLD_MAX) {
               //switch headlight OFF
-              digitalWrite(headlightPinOut, LOW);
-              Blynk_headlightLed.off();
+              pcf8574_1.digitalWrite(headlightPinOut, LOW);
+              //Blynk_headlightLed.off();
               
               //switch ledring ON
-              digitalWrite(ledRingPinOut, HIGH);
-              Blynk_ledRingLed.on();
+              pcf8574_1.digitalWrite(ledRingPinOut, HIGH);
+              //Blynk_ledRingLed.on();
               
             } else if(lightSensorValue <= LIGHT_SENSOR_THRESHOLD_MIN) {
               //switch headlight ON
-              digitalWrite(headlightPinOut, HIGH);
-              Blynk_headlightLed.on();
+              pcf8574_1.digitalWrite(headlightPinOut, HIGH);
+              //Blynk_headlightLed.on();
               
               //switch ledring OFF
-              digitalWrite(ledRingPinOut, LOW);
-              Blynk_ledRingLed.off();
+              pcf8574_1.digitalWrite(ledRingPinOut, LOW);
+              //Blynk_ledRingLed.off();
 
             }    
           }
         }
-
+  
   /**********************************
   OIL
   **********************************/
-  float val = analogRead(oilPressureSensorPin);
+  
+  float val = analogRead(oilPressureSensorPinIn);
   float oilPressure = mapf(val, 0, 1023,0,1); 
   oilPressureWarning = oilPressure <= OIL_PRESURE_THESHOLD_MIN ? true : false;
+  
 
  /*********************************
   RPM & SHIFTLIGHT
   *********************************/  
+  
   //Get tachymeter state
   currentRPMState = digitalRead(rpmPin);
   
@@ -342,10 +348,11 @@ void loop() {
     }
     timeSpentAtPreviousRPMState = 0;
   }
-
+  
   /**********************************
   SPEED
   **********************************/
+  
   //Get speed state
   currentRPMState = digitalRead(speedPin);
   
@@ -365,11 +372,11 @@ void loop() {
 
     float distancePourUnSegment = circonferenceMM/segments;
     float vitesseEnMMparMilisec = distancePourUnSegment/millisecondesParSegments;
-    /*
-    vitesseEnMMparMilisec/1000 > Metre
-    vitesseEnMMparMilisec/1000000 > vitesseEnKMparMilisec
-    vitesseEnKMparMilisec*1000*60*60 > Heure
-    */
+    
+    //vitesseEnMMparMilisec/1000 > Metre
+    //vitesseEnMMparMilisec/1000000 > vitesseEnKMparMilisec
+    //vitesseEnKMparMilisec*1000*60*60 > Heure
+    
     kmh = vitesseEnMMparMilisec/1000/1000*1000*60*60;
     
 
@@ -380,10 +387,10 @@ void loop() {
   /*********************************
   TEMPERATURE MOTEUR ET VENTILATION
   *********************************/
-
+  
   //Mesure de la valeur de la sonde température moteur
   
-  temperatureSensorValue = analogRead(temperatureSensorPin);
+  temperatureSensorValue = analogRead(temperatureSensorPinIn);
   
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
   float temperatureSensorVoltage = mapf(temperatureSensorValue, 0, 1023,0,5);
@@ -392,11 +399,10 @@ void loop() {
   float temperatureSensorResistance = mapf(temperatureSensorVoltage,0,5,3000,0);
 
   //Conversion de la résistance en température
-  //TODO (utile ?)
-   /* 
-   * 103° > Ventilateur ON
-   * 111° > Warning ON
-   */
+  //TODO (utile ?) 
+  // 103° > Ventilateur ON
+  // 111° > Warning ON
+   
   
   //Application des mesures nécessaire vis-à-vis de la résitance mesurés
   if(temperatureSensorResistance < VENTILATION_THRESHOLD_OHMS) fanOn = true;
@@ -408,28 +414,25 @@ void loop() {
   digitalWrite(fanPin, fanOn ? HIGH : LOW); 
 
   
+  
   /**********************************
   GEARBOX
   **********************************/
-  gearBox1Value = analogRead(gearBox1Pin);
-  gearBox2Value = analogRead(gearBox2Pin);
-  gearBox3Value = analogRead(gearBox3Pin);
-
-  //mesure des valeurs des cables de sortie de boite
-  boolean gearBox1Active = analogToDigital(gearBox1Value);
-  boolean gearBox2Active = analogToDigital(gearBox2Value);
-  boolean gearBox3Active = analogToDigital(gearBox3Value);
+  
+  gearBox1Value = pcf8574_1.digitalRead(gearBox1PinIn);
+  gearBox2Value = pcf8574_1.digitalRead(gearBox2PinIn);
+  gearBox3Value = pcf8574_1.digitalRead(gearBox3PinIn);
 
   //conversion en numéro de vitesse
   gearWarning = false;
   int gear;
-       if(gearBox1Active == LOW   && gearBox2Active == LOW  && gearBox3Active == LOW)   gear = 0;
-  else if(gearBox1Active == HIGH  && gearBox2Active == LOW  && gearBox3Active == LOW)   gear = 1;
-  else if(gearBox1Active == LOW   && gearBox2Active == HIGH && gearBox3Active == LOW)   gear = 2;
-  else if(gearBox1Active == HIGH  && gearBox2Active == HIGH && gearBox3Active == LOW)   gear = 3;
-  else if(gearBox1Active == LOW   && gearBox2Active == LOW  && gearBox3Active == HIGH ) gear = 4;
-  else if(gearBox1Active == HIGH  && gearBox2Active == LOW  && gearBox3Active == HIGH ) gear = 5;
-  else if(gearBox1Active == HIGH  && gearBox2Active == HIGH && gearBox3Active == HIGH ) gear = 6;
+       if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == LOW)   gear = 0;
+  else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == LOW)   gear = 1;
+  else if(gearBox1Value == LOW   && gearBox2Value == HIGH && gearBox3Value == LOW)   gear = 2;
+  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == LOW)   gear = 3;
+  else if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == HIGH ) gear = 4;
+  else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == HIGH ) gear = 5;
+  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) gear = 6;
   else { gear = -1; gearWarning = true; }
 
   digitalWrite(neutralPin, gear == 0 ? HIGH : LOW);
@@ -438,33 +441,34 @@ void loop() {
   digitalWrite(gear3Pin, gear == 3 ? HIGH : LOW);
   digitalWrite(gear4Pin, gear == 4 ? HIGH : LOW);
   digitalWrite(gear5Pin, gear == 5 ? HIGH : LOW);
-
+  
   /**********************************
   FUEL
   **********************************/
+  
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float fuelSensor = mapf(analogRead(fuelSensorPin), 0, 1023, 0, 100);
+  float fuelSensor = mapf(analogRead(fuelSensorPinIn), 0, 1023, 0, 100);
 
   if(fuelSensor <= FUEL_LEVEL_THERSHOLD_MIN) {
-    digitalWrite(fuelIndicatorPin, HIGH); 
+    analogWrite(fuelIndicatorPin, 255); 
   } else if(fuelSensor >= FUEL_LEVEL_THERSHOLD_MAX) {
-    digitalWrite(fuelIndicatorPin, LOW); 
+    analogWrite(fuelIndicatorPin, 0); 
   }
-
+  
   /**********************************
   ALERTE
   **********************************/
-
+  
   globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
 
   digitalWrite(warningPin, globalWarning ? HIGH : LOW); 
-
+  
   
 
   /*********************************************
   SERIAL WRITE
   *********************************************/
-  /*
+  
    
   if (abs(currentMillis - serialLastSent) >= serialDelay) {
     serialLastSent = currentMillis;
@@ -531,6 +535,4 @@ void loop() {
     Serial.println(text);  
     Serial.end();
   }
-  */
-
 }
