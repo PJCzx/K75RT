@@ -9,6 +9,35 @@ SoftwareSerial DebugSerial(0, 1); // RX, TX
 char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
 */
 
+class DigitalPin {
+  
+  DigitalPin(int pin): pin(pin) { };
+  DigitalPin(int pin, PCF8574* pcf8574): pin(pin), pcf8574(pcf8574) { };
+  
+  void set(bool value) {
+    if(pcf8574) {
+      pcf8574->digitalWrite(pin, value);
+    } else {
+      digitalWrite(pin, value);
+    }
+  } 
+  
+  void setup() {}
+  void high() {
+    set(HIGH); 
+  }
+  void low() {
+    set(LOW);
+  }
+  
+  
+ 
+  
+  public: 
+    int pin;
+    PCF8574* pcf8574 = NULL;
+};
+
 //ANALOGS A0 -> A7 
 
 int lightSensorPinIn          = A0; 
