@@ -1,4 +1,5 @@
 #include "PCF8574.h" // https://github.com/xreef/PCF8574_library
+#include "DigitalPin.h"
 /*
 #define BLYNK_USE_DIRECT_CONNECT
 #include <SoftwareSerial.h>
@@ -8,35 +9,6 @@
 SoftwareSerial DebugSerial(0, 1); // RX, TX
 char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
 */
-
-class DigitalPin {
-  
-  DigitalPin(int pin): pin(pin) { };
-  DigitalPin(int pin, PCF8574* pcf8574): pin(pin), pcf8574(pcf8574) { };
-  
-  void set(bool value) {
-    if(pcf8574) {
-      pcf8574->digitalWrite(pin, value);
-    } else {
-      digitalWrite(pin, value);
-    }
-  } 
-  
-  void setup() {}
-  void high() {
-    set(HIGH); 
-  }
-  void low() {
-    set(LOW);
-  }
-  
-  
- 
-  
-  public: 
-    int pin;
-    PCF8574* pcf8574 = NULL;
-};
 
 //ANALOGS A0 -> A7 
 
@@ -77,6 +49,11 @@ int gearBox1PinIn             = 4; //OK
 int gearBox2PinIn             = 5; //OK
 int gearBox3PinIn             = 6; //OK
 //P7 AVAILABLE
+
+//TEST CLASS
+DigitalPin wpo = DigitalPin(OUTPUT, 13);
+DigitalPin ap7 = DigitalPin(OUTPUT, 7, &pcf8574_1);
+
 
 float temperatureSensorValue = 0;  
 float oilPresureSensorValue = 0;
@@ -188,6 +165,10 @@ void setup() {
   pcf8574_1.pinMode(gearBox3PinIn, INPUT);
   pcf8574_1.pinMode(P7, OUTPUT);
 
+  //test setup
+  wpo.setup();
+  ap7.setup();
+
   pcf8574_1.begin();
  
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
@@ -242,6 +223,10 @@ BLYNK_READ(V5)
 
 void loop() {
   //Blynk.run();
+
+  //test write
+  wpo.high();
+  ap7.high();
   
  /*********************************
   TIME MANAGEMENT
