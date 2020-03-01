@@ -10,49 +10,47 @@ SoftwareSerial DebugSerial(0, 1); // RX, TX
 char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
 */
 
-//ANALOGS A0 -> A7 
 
+//ANALOGS A0 -> A7 (!) A4 + A5 -> SDA + SCL
+//DIGITALS ARDUINO 2 -> 13
+//DIGITALS PCF8574 0 -> 7
+
+PCF8574 pcf8574_1(0x20);
+PCF8574 pcf8574_2(0x21); //P0 -> P7
+
+//INPUTS
 int lightSensorPinIn          = A0; 
 int temperatureSensorPinIn    = A1; //OK
 int oilPressureSensorPinIn    = A2; //OK
 int fuelSensorPinIn           = A3; //OK
-// A4 + A5 -> SDA + SCL
+
+
+DigitalPin mUnitLightOutputPinIn      (INPUT, 2);
+DigitalPin rpmPinIn                   (INPUT, 3);
+DigitalPin speedPinIn_wheel           (INPUT, 4); //OK TODO : Choisir
+//DigitalPin speedPinIn_abs             (INPUT, 4); //OK TODO : Choisir
+DigitalPin lightSwitchPosition1PinIn  (INPUT, 5); //OK
+DigitalPin lightSwitchPosition2PinIn  (INPUT, 6); //OK
+DigitalPin gearBox1PinIn              (INPUT, 7); //OK
+DigitalPin gearBox2PinIn              (INPUT, 8); //OK
+DigitalPin gearBox3PinIn              (INPUT, 9); //OK
+//TODO : ATTENTIOTN ENTR2E
+
+//OUTPUTS
 int fuelIndicatorPinOut       = A6; //OK
-int speedIdicatorPinOut       = A7; // TODO : ANALOG | DIGITAL ?
+DigitalPin ledRingPinOut         (OUTPUT, &pcf8574_1, 0);
+DigitalPin headlightPinOut       (OUTPUT, &pcf8574_1, 1); 
+DigitalPin speedIdicatorPinOut   (OUTPUT, &pcf8574_1, 2);
+DigitalPin rpmPinOut             (OUTPUT, &pcf8574_1, 3); //OK
+DigitalPin fanPinOut             (OUTPUT, &pcf8574_1, 4); //OK
+DigitalPin warningPinOut         (OUTPUT, &pcf8574_1, 5);
 
-
-//DIGITALS 2 -> 13
-
-int mUnitLightOutputPinIn = 2;
-int rpmPinIn              = 3; // TODO trouver une entrée
-int rpmPinOut             = 3; //OK
-int fanPinOut             = 4; //OK
-int speedPinIn_wheel      = 5; //OK TODO : Choisir
-int speedPinIn_abs        = 5; //OK TODO : Choisir
-
-int neutralPinOut         = 7;  //OK
-int gear1PinOut           = 8; //OK
-int gear2PinOut           = 9; //OK
-int gear3PinOut           = 10; //OK           
-int gear4PinOut           = 11; //OK
-int gear5PinOut           = 12; //OK
-int warningPinOut         = 13;
-
-//( A4 : SDA / A5 : SCL)
-PCF8574 pcf8574_1(0x20); //P0 -> P7
-
-int lightSwitchPosition1PinIn = 0; //OK
-int lightSwitchPosition2PinIn = 1; //OK
-int ledRingPinOut             = 2;
-int headlightPinOut           = 3; 
-int gearBox1PinIn             = 4; //OK
-int gearBox2PinIn             = 5; //OK
-int gearBox3PinIn             = 6; //OK
-//P7 AVAILABLE
-
-//TEST CLASS
-DigitalPin wpo = DigitalPin(OUTPUT, 13);
-DigitalPin ap7 = DigitalPin(OUTPUT, 7, &pcf8574_1);
+DigitalPin neutralPinOut         (OUTPUT, &pcf8574_2, 0);  //OK
+DigitalPin gear1PinOut           (OUTPUT, &pcf8574_2, 1); //OK
+DigitalPin gear2PinOut           (OUTPUT, &pcf8574_2, 2); //OK
+DigitalPin gear3PinOut           (OUTPUT, &pcf8574_2, 3); //OK           
+DigitalPin gear4PinOut           (OUTPUT, &pcf8574_2, 4); //OK
+DigitalPin gear5PinOut           (OUTPUT, &pcf8574_2, 5); //OK
 
 
 float temperatureSensorValue = 0;  
@@ -60,22 +58,24 @@ float oilPresureSensorValue = 0;
 float gearBox1Value = 0;
 float gearBox2Value = 0;
 float gearBox3Value = 0;
-
 unsigned long int currentMillis;
 unsigned long int previousMillis;
-
 int serialDelay = 500;
 int serialLastSent = 0;
-
 unsigned long int timeSpentAtPreviousRPMState;
 bool currentRPMState;
 bool previousRPMState;
 float rpm;
-
 unsigned long int timeSpentAtPreviousSpeedState;
 bool currentSpeedState;
 bool previousSpeedState;
 float kmh;
+boolean fanOn = false;
+boolean globalWarning = false;
+boolean oilPressureWarning = false;
+boolean gearWarning = false;
+boolean temperatureWarning = false;
+boolean rpmWarning = false;
 
  //Constantes
   //Définition de seuils
@@ -105,13 +105,7 @@ const float LIGHT_SENSOR_THRESHOLD_MIN = 0.33;
 const float LIGHT_SENSOR_THRESHOLD_MAX = 0.66;
 const float OIL_PRESURE_THESHOLD_MIN = 0.33;
 
-boolean fanOn = false;
 
-boolean globalWarning = false;
-boolean oilPressureWarning = false;
-boolean gearWarning = false;
-boolean temperatureWarning = false;
-boolean rpmWarning = false;
 
 float mapf(double val, double in_min, double in_max, double out_min, double out_max) {
     return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -131,45 +125,40 @@ void setup() {
   //Blynk.begin(Serial, auth);
   */
 
-  //TODO : REVOIR TOUTES LES I/O
-  
   //Entrées
+  pinMode(lightSensorPinIn, INPUT);
   pinMode(temperatureSensorPinIn, INPUT);
   pinMode(oilPressureSensorPinIn, INPUT);
   pinMode(fuelSensorPinIn, INPUT);
-  pinMode(gearBox1PinIn, INPUT);
-  pinMode(gearBox2PinIn, INPUT);
-  pinMode(gearBox3PinIn, INPUT);
-  pinMode(mUnitLightOutputPinIn, INPUT);
-  pinMode(lightSensorPinIn, INPUT);
+  mUnitLightOutputPinIn.setup();
+  rpmPinIn.setup();
+  speedPinIn_wheel.setup();
+  //speedPinIn_abs.setup();
+  lightSwitchPosition1PinIn.setup();
+  lightSwitchPosition2PinIn.setup();
+  gearBox1PinIn.setup();
+  gearBox2PinIn.setup();
+  gearBox3PinIn.setup();
+  
 
   //Sorties
-  pinMode(fanPinOut, OUTPUT);
-  pinMode(warningPinOut, OUTPUT);
-  pinMode(neutralPinOut, OUTPUT);
   pinMode(fuelIndicatorPinOut, OUTPUT);
-  pinMode(gear1PinOut, OUTPUT);
-  pinMode(gear2PinOut, OUTPUT);
-  pinMode(gear3PinOut, OUTPUT);
-  pinMode(gear4PinOut, OUTPUT);
-  pinMode(gear5PinOut, OUTPUT);
-  pinMode(ledRingPinOut, OUTPUT);
-  pinMode(headlightPinOut, OUTPUT);
+  ledRingPinOut.setup();
+  headlightPinOut.setup();
+  speedIdicatorPinOut.setup();
+  rpmPinOut.setup();
+  fanPinOut.setup();
+  warningPinOut.setup();
 
-  pcf8574_1.pinMode(lightSwitchPosition1PinIn, INPUT);
-  pcf8574_1.pinMode(lightSwitchPosition2PinIn, INPUT);
-  pcf8574_1.pinMode(ledRingPinOut, OUTPUT);
-  pcf8574_1.pinMode(headlightPinOut, OUTPUT);
-  pcf8574_1.pinMode(gearBox1PinIn, INPUT);
-  pcf8574_1.pinMode(gearBox2PinIn, INPUT);
-  pcf8574_1.pinMode(gearBox3PinIn, INPUT);
-  pcf8574_1.pinMode(P7, OUTPUT);
-
-  //test setup
-  wpo.setup();
-  ap7.setup();
+  neutralPinOut.setup();
+  gear1PinOut.setup();
+  gear2PinOut.setup();
+  gear3PinOut.setup();
+  gear4PinOut.setup();
+  gear5PinOut.setup();
 
   pcf8574_1.begin();
+  pcf8574_2.begin();
  
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
@@ -223,10 +212,6 @@ BLYNK_READ(V5)
 
 void loop() {
   //Blynk.run();
-
-  //test write
-  wpo.high();
-  ap7.high();
   
  /*********************************
   TIME MANAGEMENT
@@ -247,7 +232,7 @@ void loop() {
   LIGHTS
   **********************************/
   
-  bool mUnitLightVal = digitalRead(mUnitLightOutputPinIn); 
+  bool mUnitLightVal = mUnitLightOutputPinIn.state(); 
   
   if(mUnitLightVal == HIGH) {
         // IN THIS CASE, M-UNIT ASK LIGHS TOBE OFF AND WILL TRIGGER HIGHBEAM
@@ -255,11 +240,11 @@ void loop() {
         //Blynk_highBeamLed.on();
         
         //switch headlight OFF
-        pcf8574_1.digitalWrite(headlightPinOut, LOW);
+        headlightPinOut.low();
         //Blynk_headlightLed.off();
         
         //switch ledring OFF
-        pcf8574_1.digitalWrite(ledRingPinOut, LOW);
+        ledRingPinOut.low();
         //Blynk_ledRingLed.off();
         
         
@@ -271,8 +256,8 @@ void loop() {
         //Light swith value
         int lightSwitchPosition = 0;
         
-        if (pcf8574_1.digitalRead(lightSwitchPosition1PinIn) == HIGH) {
-          if (pcf8574_1.digitalRead(lightSwitchPosition2PinIn) == HIGH) {
+        if (lightSwitchPosition1PinIn.state() == HIGH) {
+          if (lightSwitchPosition2PinIn.state() == HIGH) {
             lightSwitchPosition = 2;
             
             } else {
@@ -289,11 +274,11 @@ void loop() {
             //Blynk.virtualWrite(V1, "PARKING_LIGHT");
             
             //switch headlight OFF
-            pcf8574_1.digitalWrite(headlightPinOut, LOW);
+            headlightPinOut.low();
             //Blynk_headlightLed.off();
             
             //switch ledring ON
-            pcf8574_1.digitalWrite(ledRingPinOut, HIGH);
+            ledRingPinOut.high();
             //Blynk_ledRingLed.on();
 
          
@@ -301,11 +286,11 @@ void loop() {
             //Blynk.virtualWrite(V1, "LOW_BEAM");
 
             //switch headlight ON
-            pcf8574_1.digitalWrite(headlightPinOut, HIGH);
+            headlightPinOut.high();
             //Blynk_headlightLed.on();
             
             //switch ledring OFF
-            pcf8574_1.digitalWrite(ledRingPinOut, LOW);
+            ledRingPinOut.low();
             //Blynk_ledRingLed.off();
          
           } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_OFF) {
@@ -313,20 +298,20 @@ void loop() {
 
             if(lightSensorValue >= LIGHT_SENSOR_THRESHOLD_MAX) {
               //switch headlight OFF
-              pcf8574_1.digitalWrite(headlightPinOut, LOW);
+              headlightPinOut.low();
               //Blynk_headlightLed.off();
               
               //switch ledring ON
-              pcf8574_1.digitalWrite(ledRingPinOut, HIGH);
+              ledRingPinOut.high();
               //Blynk_ledRingLed.on();
               
             } else if(lightSensorValue <= LIGHT_SENSOR_THRESHOLD_MIN) {
               //switch headlight ON
-              pcf8574_1.digitalWrite(headlightPinOut, HIGH);
+              headlightPinOut.high();
               //Blynk_headlightLed.on();
               
               //switch ledring OFF
-              pcf8574_1.digitalWrite(ledRingPinOut, LOW);
+              ledRingPinOut.low();
               //Blynk_ledRingLed.off();
 
             }    
@@ -347,7 +332,7 @@ void loop() {
   *********************************/  
   
   //Get tachymeter state
-  currentRPMState = digitalRead(rpmPinIn);
+  currentRPMState = rpmPinIn.state();
   
   //if state changed since last check
   if(currentRPMState == previousRPMState) {
@@ -372,7 +357,7 @@ void loop() {
   **********************************/
   
   //Get speed state
-  currentRPMState = digitalRead(speedPinIn_wheel); //TODO : choisir avec ABS
+  currentRPMState = speedPinIn_wheel.state(); //TODO : choisir avec ABS
   
   //if state changed since last check
   if(currentSpeedState == previousSpeedState) {
@@ -430,7 +415,7 @@ void loop() {
   if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) temperatureWarning =  true;
   if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) temperatureWarning =  false;
 
-  digitalWrite(fanPinOut, fanOn ? HIGH : LOW); 
+  fanPinOut.set(fanOn ? HIGH : LOW); 
 
   
   
@@ -438,9 +423,9 @@ void loop() {
   GEARBOX
   **********************************/
   
-  gearBox1Value = pcf8574_1.digitalRead(gearBox1PinIn);
-  gearBox2Value = pcf8574_1.digitalRead(gearBox2PinIn);
-  gearBox3Value = pcf8574_1.digitalRead(gearBox3PinIn);
+  gearBox1Value = gearBox1PinIn.state();
+  gearBox2Value = gearBox2PinIn.state();
+  gearBox3Value = gearBox3PinIn.state();
 
   //conversion en numéro de vitesse
   gearWarning = false;
@@ -454,12 +439,12 @@ void loop() {
   else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) gear = 6;
   else { gear = -1; gearWarning = true; }
 
-  digitalWrite(neutralPinOut, gear == 0 ? HIGH : LOW);
-  digitalWrite(gear1PinOut, gear == 1 ? HIGH : LOW);
-  digitalWrite(gear2PinOut, gear == 2 ? HIGH : LOW);
-  digitalWrite(gear3PinOut, gear == 3 ? HIGH : LOW);
-  digitalWrite(gear4PinOut, gear == 4 ? HIGH : LOW);
-  digitalWrite(gear5PinOut, gear == 5 ? HIGH : LOW);
+  neutralPinOut.set(gear == 0 ? HIGH : LOW);
+  gear1PinOut.set(gear == 1 ? HIGH : LOW);
+  gear2PinOut.set(gear == 2 ? HIGH : LOW);
+  gear3PinOut.set(gear == 3 ? HIGH : LOW);
+  gear4PinOut.set(gear == 4 ? HIGH : LOW);
+  gear5PinOut.set(gear == 5 ? HIGH : LOW);
   
   /**********************************
   FUEL
@@ -480,7 +465,7 @@ void loop() {
   
   globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
 
-  digitalWrite(warningPinOut, globalWarning ? HIGH : LOW); 
+  warningPinOut.set(globalWarning ? HIGH : LOW); 
   
   
 
