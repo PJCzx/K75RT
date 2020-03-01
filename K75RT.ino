@@ -1,5 +1,7 @@
+#include "Arduino.h"
 #include "PCF8574.h" // https://github.com/xreef/PCF8574_library
 #include "AdvancedPin.h"
+#include "BMW_K75RT.h"
 /*
 #define BLYNK_USE_DIRECT_CONNECT
 #include <SoftwareSerial.h>
@@ -9,56 +11,14 @@
 SoftwareSerial DebugSerial(0, 1); // RX, TX
 char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
 */
-
-
-//ANALOGS A0 -> A7 (!) A4 + A5 -> SDA + SCL
-//DIGITALS ARDUINO 2 -> 13
-//DIGITALS PCF8574 0 -> 7
-
-PCF8574 pcf8574_1(0x20);
-PCF8574 pcf8574_2(0x21); //P0 -> P7
-
-//INPUTS
-AnalogicPin lightSensorPinIn        (INPUT, A0);
-AnalogicPin temperatureSensorPinIn  (INPUT, A1); //OK
-AnalogicPin oilPressureSensorPinIn  (INPUT, A2); //OK
-AnalogicPin fuelSensorPinIn         (INPUT, A3); //OK
-
-DigitalPin mUnitLightOutputPinIn      (INPUT, 2);
-DigitalPin rpmPinIn                   (INPUT, 3);
-DigitalPin speedPinIn_wheel           (INPUT, 4);  //OK TODO : Choisir
-DigitalPin speedPinIn_abs             (INPUT, 5);  //OK TODO : Choisir
-DigitalPin lightSwitchPosition1PinIn  (INPUT, 6);  //OK
-DigitalPin lightSwitchPosition2PinIn  (INPUT, 7);  //OK
-DigitalPin gearBox1PinIn              (INPUT, 8);  //OK
-DigitalPin gearBox2PinIn              (INPUT, 9);  //OK
-DigitalPin gearBox3PinIn              (INPUT, 10); //OK
-
-//OUTPUTS
-AnalogicPin fuelIndicatorPinOut  (OUTPUT, A6); //OK
-
-DigitalPin ledRingPinOut         (OUTPUT, &pcf8574_1, 0);
-DigitalPin headlightPinOut       (OUTPUT, &pcf8574_1, 1); 
-DigitalPin speedIdicatorPinOut   (OUTPUT, &pcf8574_1, 2);
-DigitalPin rpmPinOut             (OUTPUT, &pcf8574_1, 3); //OK
-DigitalPin fanPinOut             (OUTPUT, &pcf8574_1, 4); //OK
-DigitalPin warningPinOut         (OUTPUT, &pcf8574_1, 5);
-
-DigitalPin neutralPinOut         (OUTPUT, &pcf8574_2, 0); //OK
-DigitalPin gear1PinOut           (OUTPUT, &pcf8574_2, 1); //OK
-DigitalPin gear2PinOut           (OUTPUT, &pcf8574_2, 2); //OK
-DigitalPin gear3PinOut           (OUTPUT, &pcf8574_2, 3); //OK           
-DigitalPin gear4PinOut           (OUTPUT, &pcf8574_2, 4); //OK
-DigitalPin gear5PinOut           (OUTPUT, &pcf8574_2, 5); //OK
-
+Stopwatch stopwatch = Stopwatch();
+BMW_K75RT k75 = BMW_K75RT();
 
 float temperatureSensorValue = 0;  
 float oilPresureSensorValue = 0;
 float gearBox1Value = 0;
 float gearBox2Value = 0;
 float gearBox3Value = 0;
-unsigned long int currentMillis;
-unsigned long int previousMillis;
 int serialDelay = 500;
 int serialLastSent = 0;
 unsigned long int timeSpentAtPreviousRPMState;
@@ -70,8 +30,6 @@ bool currentSpeedState;
 bool previousSpeedState;
 float kmh;
 boolean fanOn = false;
-boolean globalWarning = false;
-boolean oilPressureWarning = false;
 boolean gearWarning = false;
 boolean temperatureWarning = false;
 boolean rpmWarning = false;
@@ -98,7 +56,7 @@ const int LIGHT_SWITCH_POSITION_PARKING_LIGHT = 1;
 const int LIGHT_SWITCH_POSITION_LOW_BEAM = 2;
 const float LIGHT_SENSOR_THRESHOLD_MIN = 0.33;
 const float LIGHT_SENSOR_THRESHOLD_MAX = 0.66;
-const float OIL_PRESURE_THESHOLD_MIN = 0.33;
+//const float OIL_PRESURE_THESHOLD_MIN = 0.33;
 
 void setup() {
   /*
@@ -107,46 +65,10 @@ void setup() {
   //Serial.begin(9600);
   //Blynk.begin(Serial, auth);
   */
-
-  //Entrées
-  lightSensorPinIn.setup();
-  temperatureSensorPinIn.setup();
-  oilPressureSensorPinIn.setup();
-  fuelSensorPinIn.setup();
-  mUnitLightOutputPinIn.setup();
-  rpmPinIn.setup();
-  speedPinIn_wheel.setup();
-  speedPinIn_abs.setup();
-  lightSwitchPosition1PinIn.setup();
-  lightSwitchPosition2PinIn.setup();
-  gearBox1PinIn.setup();
-  gearBox2PinIn.setup();
-  gearBox3PinIn.setup();
-  
-  //Sorties
-  fuelIndicatorPinOut.setup();
-  ledRingPinOut.setup();
-  headlightPinOut.setup();
-  speedIdicatorPinOut.setup();
-  rpmPinOut.setup();
-  fanPinOut.setup();
-  warningPinOut.setup();
-  neutralPinOut.setup();
-  gear1PinOut.setup();
-  gear2PinOut.setup();
-  gear3PinOut.setup();
-  gear4PinOut.setup();
-  gear5PinOut.setup();
-
-  pcf8574_1.begin();
-  pcf8574_2.begin();
-
-  
+  k75.setup();
+    
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
-  
-  currentMillis = 0;
-  previousMillis = 0;
-  
+    
   currentRPMState = LOW;
   previousRPMState = LOW;
   timeSpentAtPreviousRPMState = 0;
@@ -193,28 +115,20 @@ BLYNK_READ(V5)
 */
 
 void loop() {
+  k75.loopInit();
+  
   //Blynk.run();
   
  /*********************************
   TIME MANAGEMENT
   *********************************/
-  
-  ///If code run over 50 days : Manage time overflow
-  if(currentMillis < previousMillis) {
-    previousMillis = currentMillis;
-  }
-  
-  //Backup before update
-  previousMillis = currentMillis;
-  
-  //update
-  currentMillis = millis();
+  stopwatch.run();
   
   /**********************************
   LIGHTS
   **********************************/
   
-  bool mUnitLightVal = mUnitLightOutputPinIn.state(); 
+  bool mUnitLightVal = k75.mUnitLightOutputPinIn->state(); 
   
   if(mUnitLightVal == HIGH) {
         // IN THIS CASE, M-UNIT ASK LIGHS TOBE OFF AND WILL TRIGGER HIGHBEAM
@@ -222,11 +136,11 @@ void loop() {
         //Blynk_highBeamLed.on();
         
         //switch headlight OFF
-        headlightPinOut.low();
+        k75.headlightPinOut->low();
         //Blynk_headlightLed.off();
         
         //switch ledring OFF
-        ledRingPinOut.low();
+        k75.ledRingPinOut->low();
         //Blynk_ledRingLed.off();
         
         
@@ -238,8 +152,8 @@ void loop() {
         //Light SWITCH value
         int lightSwitchPosition = 0;
         
-        if (lightSwitchPosition1PinIn.state() == HIGH) {
-          if (lightSwitchPosition2PinIn.state() == HIGH) {
+        if (k75.lightSwitchPosition1PinIn->state() == HIGH) {
+          if (k75.lightSwitchPosition2PinIn->state() == HIGH) {
             lightSwitchPosition = 2;
             
             } else {
@@ -250,17 +164,17 @@ void loop() {
         }
 
         //Light sensor value
-        float lightSensorValue = lightSensorPinIn.value();
+        float lightSensorValue = k75.lightSensorPinIn->value();
         
         if(lightSwitchPosition == LIGHT_SWITCH_POSITION_PARKING_LIGHT) {
             //Blynk.virtualWrite(V1, "PARKING_LIGHT");
             
             //switch headlight OFF
-            headlightPinOut.low();
+            k75.headlightPinOut->low();
             //Blynk_headlightLed.off();
             
             //switch ledring ON
-            ledRingPinOut.high();
+            k75.ledRingPinOut->high();
             //Blynk_ledRingLed.on();
 
          
@@ -268,11 +182,11 @@ void loop() {
             //Blynk.virtualWrite(V1, "LOW_BEAM");
 
             //switch headlight ON
-            headlightPinOut.high();
+            k75.headlightPinOut->high();
             //Blynk_headlightLed.on();
             
             //switch ledring OFF
-            ledRingPinOut.low();
+            k75.ledRingPinOut->low();
             //Blynk_ledRingLed.off();
          
           } else if(lightSwitchPosition == LIGHT_SWITCH_POSITION_OFF) {
@@ -280,20 +194,20 @@ void loop() {
 
             if(lightSensorValue >= LIGHT_SENSOR_THRESHOLD_MAX) {
               //switch headlight OFF
-              headlightPinOut.low();
+              k75.headlightPinOut->low();
               //Blynk_headlightLed.off();
               
               //switch ledring ON
-              ledRingPinOut.high();
+              k75.ledRingPinOut->high();
               //Blynk_ledRingLed.on();
               
             } else if(lightSensorValue <= LIGHT_SENSOR_THRESHOLD_MIN) {
               //switch headlight ON
-              headlightPinOut.high();
+              k75.headlightPinOut->high();
               //Blynk_headlightLed.on();
               
               //switch ledring OFF
-              ledRingPinOut.low();
+              k75.ledRingPinOut->low();
               //Blynk_ledRingLed.off();
 
             }    
@@ -303,21 +217,18 @@ void loop() {
   /**********************************
   OIL
   **********************************/
-  
-  float oilPressure = oilPressureSensorPinIn.value();
-  oilPressureWarning = oilPressure <= OIL_PRESURE_THESHOLD_MIN ? true : false;
-  
+  k75.isOilPresureOK();
 
  /*********************************
   RPM & SHIFTLIGHT
   *********************************/  
   
   //Get tachymeter state
-  currentRPMState = rpmPinIn.state();
+  currentRPMState = k75.rpmPinIn->state();
   
   //if state changed since last check
   if(currentRPMState == previousRPMState) {
-    timeSpentAtPreviousRPMState += currentMillis - previousMillis;
+    timeSpentAtPreviousRPMState += stopwatch.currentMillis - stopwatch.previousMillis;
   } else {
     previousRPMState = currentRPMState;
     int segments = 2;
@@ -338,11 +249,11 @@ void loop() {
   **********************************/
   
   //Get speed state
-  currentRPMState = speedPinIn_wheel.state(); //TODO : choisir avec ABS
+  currentRPMState = k75.speedPinIn_wheel->state(); //TODO : choisir avec ABS
   
   //if state changed since last check
   if(currentSpeedState == previousSpeedState) {
-    timeSpentAtPreviousSpeedState += (currentMillis - previousMillis);
+    timeSpentAtPreviousSpeedState += (stopwatch.currentMillis - stopwatch.previousMillis);
   } else {
     previousSpeedState = currentSpeedState;
 
@@ -373,7 +284,7 @@ void loop() {
   TEMPERATURE MOTEUR ET VENTILATION
   *********************************/
    
-  temperatureSensorValue = temperatureSensorPinIn.value();
+  temperatureSensorValue = k75.temperatureSensorPinIn->value();
   
   float temperature = mapf(temperatureSensorValue,0.0,1.0,0.0,1.0);
 
@@ -383,7 +294,7 @@ void loop() {
   if(temperature > TEMPERATURE_WARNING_THRESHOLD) temperatureWarning =  true;
   if(temperature < TEMPERATURE_WARNING_THRESHOLD - TEMPERATURE_WARNING_HYSTERESIS) temperatureWarning =  false;
 
-  fanPinOut.set(fanOn ? HIGH : LOW); 
+  k75.fanPinOut->set(fanOn ? HIGH : LOW); 
 
   
   
@@ -391,9 +302,9 @@ void loop() {
   GEARBOX
   **********************************/
   
-  gearBox1Value = gearBox1PinIn.state();
-  gearBox2Value = gearBox2PinIn.state();
-  gearBox3Value = gearBox3PinIn.state();
+  gearBox1Value = k75.gearBox1PinIn->state();
+  gearBox2Value = k75.gearBox2PinIn->state();
+  gearBox3Value = k75.gearBox3PinIn->state();
 
   //conversion en numéro de vitesse
   gearWarning = false;
@@ -407,33 +318,33 @@ void loop() {
   else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) gear = 6;
   else { gear = -1; gearWarning = true; }
 
-  neutralPinOut.set(gear == 0 ? HIGH : LOW);
-  gear1PinOut.set(gear == 1 ? HIGH : LOW);
-  gear2PinOut.set(gear == 2 ? HIGH : LOW);
-  gear3PinOut.set(gear == 3 ? HIGH : LOW);
-  gear4PinOut.set(gear == 4 ? HIGH : LOW);
-  gear5PinOut.set(gear == 5 ? HIGH : LOW);
+  k75.neutralPinOut->set(gear == 0 ? HIGH : LOW);
+  k75.gear1PinOut->set(gear == 1 ? HIGH : LOW);
+  k75.gear2PinOut->set(gear == 2 ? HIGH : LOW);
+  k75.gear3PinOut->set(gear == 3 ? HIGH : LOW);
+  k75.gear4PinOut->set(gear == 4 ? HIGH : LOW);
+  k75.gear5PinOut->set(gear == 5 ? HIGH : LOW);
   
   /**********************************
   FUEL
   **********************************/
   
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float fuelSensor = fuelSensorPinIn.value();
+  float fuelSensor = k75.fuelSensorPinIn->value();
 
   if(fuelSensor <= FUEL_LEVEL_THERSHOLD_MIN) {
-    fuelIndicatorPinOut.set(FUEL_LEVEL_HIGH); 
+    k75.fuelIndicatorPinOut->set(FUEL_LEVEL_HIGH); 
   } else if(fuelSensor >= FUEL_LEVEL_THERSHOLD_MAX) {
-    fuelIndicatorPinOut.set(FUEL_LEVEL_LOW); 
+    k75.fuelIndicatorPinOut->set(FUEL_LEVEL_LOW); 
   }
   
   /**********************************
   ALERTE
   **********************************/
   
-  globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
+  k75.globalWarning = k75.oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
 
-  warningPinOut.set(globalWarning ? HIGH : LOW); 
+  k75.warningPinOut->set(k75.globalWarning ? HIGH : LOW); 
   
   
 
@@ -442,8 +353,8 @@ void loop() {
   *********************************************/
   
    
-  if (abs(currentMillis - serialLastSent) >= serialDelay) {
-    serialLastSent = currentMillis;
+  if (abs(stopwatch.currentMillis - serialLastSent) >= serialDelay) {
+    serialLastSent = stopwatch.currentMillis;
 
      String text = "";
 
@@ -497,7 +408,7 @@ void loop() {
     //ALERTE
       //INPUTS
       //OUTPUTS
-      text += globalWarning ? "X" : "-";
+      text += k75.globalWarning ? "X" : "-";
     
    
 

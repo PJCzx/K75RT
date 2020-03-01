@@ -7,7 +7,7 @@
 using namespace std;
 
 class DigitalPin {
-  private:   
+  protected:   
     int pin;
     PCF8574* pcf8574 = NULL;
     int ioType;
