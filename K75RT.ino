@@ -1,5 +1,5 @@
 #include "PCF8574.h" // https://github.com/xreef/PCF8574_library
-#include "DigitalPin.h"
+#include "AdvancedPin.h"
 /*
 #define BLYNK_USE_DIRECT_CONNECT
 #include <SoftwareSerial.h>
@@ -26,16 +26,17 @@ AnalogicPin fuelSensorPinIn         (INPUT, A3); //OK
 
 DigitalPin mUnitLightOutputPinIn      (INPUT, 2);
 DigitalPin rpmPinIn                   (INPUT, 3);
-DigitalPin speedPinIn_wheel           (INPUT, 4); //OK TODO : Choisir
-//DigitalPin speedPinIn_abs           map  (INPUT, 4); //OK TODO : Choisir
-DigitalPin lightSwitchPosition1PinIn  (INPUT, 5); //OK
-DigitalPin lightSwitchPosition2PinIn  (INPUT, 6); //OK
-DigitalPin gearBox1PinIn              (INPUT, 7); //OK
-DigitalPin gearBox2PinIn              (INPUT, 8); //OK
-DigitalPin gearBox3PinIn              (INPUT, 9); //OK
+DigitalPin speedPinIn_wheel           (INPUT, 4);  //OK TODO : Choisir
+DigitalPin speedPinIn_abs             (INPUT, 5);  //OK TODO : Choisir
+DigitalPin lightSwitchPosition1PinIn  (INPUT, 6);  //OK
+DigitalPin lightSwitchPosition2PinIn  (INPUT, 7);  //OK
+DigitalPin gearBox1PinIn              (INPUT, 8);  //OK
+DigitalPin gearBox2PinIn              (INPUT, 9);  //OK
+DigitalPin gearBox3PinIn              (INPUT, 10); //OK
 
 //OUTPUTS
 AnalogicPin fuelIndicatorPinOut  (OUTPUT, A6); //OK
+
 DigitalPin ledRingPinOut         (OUTPUT, &pcf8574_1, 0);
 DigitalPin headlightPinOut       (OUTPUT, &pcf8574_1, 1); 
 DigitalPin speedIdicatorPinOut   (OUTPUT, &pcf8574_1, 2);
@@ -43,7 +44,7 @@ DigitalPin rpmPinOut             (OUTPUT, &pcf8574_1, 3); //OK
 DigitalPin fanPinOut             (OUTPUT, &pcf8574_1, 4); //OK
 DigitalPin warningPinOut         (OUTPUT, &pcf8574_1, 5);
 
-DigitalPin neutralPinOut         (OUTPUT, &pcf8574_2, 0);  //OK
+DigitalPin neutralPinOut         (OUTPUT, &pcf8574_2, 0); //OK
 DigitalPin gear1PinOut           (OUTPUT, &pcf8574_2, 1); //OK
 DigitalPin gear2PinOut           (OUTPUT, &pcf8574_2, 2); //OK
 DigitalPin gear3PinOut           (OUTPUT, &pcf8574_2, 3); //OK           
@@ -75,20 +76,14 @@ boolean gearWarning = false;
 boolean temperatureWarning = false;
 boolean rpmWarning = false;
 
- //Constantes
-  //Définition de seuils
-   /*
-   * POST #23 http://bmist.forumpro.fr/t100118-probleme-sonde-temperature-ldr-k75?highlight=sonde+temp%E9rature
-   * "le ventilo se déclenchait vers 29,5 ce qui doit correspondre à 101°c valeur normale"
-   */
- /* 
- * 
- * 
+ /*
+ * POST #23 http://bmist.forumpro.fr/t100118-probleme-sonde-temperature-ldr-k75?highlight=sonde+temp%E9rature
+ * "le ventilo se déclenchait vers 29,5 ce qui doit correspondre à 101°c valeur normale"
  */
-const float VENTILATION_THRESHOLD = 103; //103° > Ventilateur ON (175 OHMS)
-const float VENTILATION_HYSTERESIS = 5; //5° TODO : Verifier si cela nous convient
-const float WARNING_THRESHOLD = 111; // 111° = (143 OHMS)
-const float WARNING_HYSTERESIS = 100;
+const float TEMPERATURE_VENTILATION_THRESHOLD = 103;  //TODO : FIND MATCHING VALUES //103° = 175 OHMS
+const float TEMPERATURE_VENTILATION_HYSTERESIS = 5; //5° TODO : Verifier si cela nous convient
+const float TEMPERATURE_WARNING_THRESHOLD = 111;  //TODO : FIND MATCHING VALUES // 111° = 143 OHMS
+const float TEMPERATURE_WARNING_HYSTERESIS = 5; //TODO : Verifier si cela nous convient
 
 const int SHIFT_LIGHT_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
 const int SHIFT_LIGHT_THERSHOLD_MIN = 8400; // LA ZONE SUR LE COMPTEUR BMX EST ENTRE 8500 ET 9000
@@ -98,9 +93,9 @@ const int FUEL_LEVEL_THERSHOLD_MIN = 0.10; //S'éteint au dessus de 15%
 const int FUEL_LEVEL_HIGH = 1.0; //S'éteint au dessus de 15%
 const int FUEL_LEVEL_LOW = 0.0; //S'éteint au dessus de 15%
 
-const int LIGHT_SWITH_POSITION_OFF = 0;
-const int LIGHT_SWITH_POSITION_PARKING_LIGHT = 1;
-const int LIGHT_SWITH_POSITION_LOW_BEAM = 2;
+const int LIGHT_SWITCH_POSITION_OFF = 0;
+const int LIGHT_SWITCH_POSITION_PARKING_LIGHT = 1;
+const int LIGHT_SWITCH_POSITION_LOW_BEAM = 2;
 const float LIGHT_SENSOR_THRESHOLD_MIN = 0.33;
 const float LIGHT_SENSOR_THRESHOLD_MAX = 0.66;
 const float OIL_PRESURE_THESHOLD_MIN = 0.33;
@@ -121,14 +116,13 @@ void setup() {
   mUnitLightOutputPinIn.setup();
   rpmPinIn.setup();
   speedPinIn_wheel.setup();
-  //speedPinIn_abs.setup();
+  speedPinIn_abs.setup();
   lightSwitchPosition1PinIn.setup();
   lightSwitchPosition2PinIn.setup();
   gearBox1PinIn.setup();
   gearBox2PinIn.setup();
   gearBox3PinIn.setup();
   
-
   //Sorties
   fuelIndicatorPinOut.setup();
   ledRingPinOut.setup();
@@ -137,7 +131,6 @@ void setup() {
   rpmPinOut.setup();
   fanPinOut.setup();
   warningPinOut.setup();
-
   neutralPinOut.setup();
   gear1PinOut.setup();
   gear2PinOut.setup();
@@ -147,7 +140,8 @@ void setup() {
 
   pcf8574_1.begin();
   pcf8574_2.begin();
- 
+
+  
   for (int i = 1; i <=13; i++) digitalWrite(i, LOW);
   
   currentMillis = 0;
@@ -241,7 +235,7 @@ void loop() {
         //Blynk_mUnitLed.on();
         //Blynk_highBeamLed.off();
         
-        //Light swith value
+        //Light SWITCH value
         int lightSwitchPosition = 0;
         
         if (lightSwitchPosition1PinIn.state() == HIGH) {
@@ -258,7 +252,7 @@ void loop() {
         //Light sensor value
         float lightSensorValue = lightSensorPinIn.value();
         
-        if(lightSwitchPosition == LIGHT_SWITH_POSITION_PARKING_LIGHT) {
+        if(lightSwitchPosition == LIGHT_SWITCH_POSITION_PARKING_LIGHT) {
             //Blynk.virtualWrite(V1, "PARKING_LIGHT");
             
             //switch headlight OFF
@@ -270,7 +264,7 @@ void loop() {
             //Blynk_ledRingLed.on();
 
          
-          } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_LOW_BEAM) {
+          } else if(lightSwitchPosition == LIGHT_SWITCH_POSITION_LOW_BEAM) {
             //Blynk.virtualWrite(V1, "LOW_BEAM");
 
             //switch headlight ON
@@ -281,7 +275,7 @@ void loop() {
             ledRingPinOut.low();
             //Blynk_ledRingLed.off();
          
-          } else if(lightSwitchPosition == LIGHT_SWITH_POSITION_OFF) {
+          } else if(lightSwitchPosition == LIGHT_SWITCH_POSITION_OFF) {
             //Blynk.virtualWrite(V1, "OFF");
 
             if(lightSensorValue >= LIGHT_SENSOR_THRESHOLD_MAX) {
@@ -378,26 +372,16 @@ void loop() {
   /*********************************
   TEMPERATURE MOTEUR ET VENTILATION
   *********************************/
-  
-  //Mesure de la valeur de la sonde température moteur
-  
+   
   temperatureSensorValue = temperatureSensorPinIn.value();
   
-  //Calcul de la résistance en fonction de la tension mesurée  
-  float temperature = mapf(temperatureSensorValue,0.0,1.0,0.0,1.0); //TODO : FIND MATCHING VALUES
+  float temperature = mapf(temperatureSensorValue,0.0,1.0,0.0,1.0);
 
-  //Conversion de la résistance en température
-  //TODO (utile ?) 
-  // 103° > Ventilateur ON
-  // 111° > Warning ON
-   
+  if(temperature > TEMPERATURE_VENTILATION_THRESHOLD) fanOn = true;
+  if(temperature < TEMPERATURE_VENTILATION_THRESHOLD - TEMPERATURE_VENTILATION_HYSTERESIS) fanOn = false;
   
-  //Application des mesures nécessaire vis-à-vis de la résitance mesurés
-  if(temperature < VENTILATION_THRESHOLD) fanOn = true;
-  if(temperature > VENTILATION_THRESHOLD + VENTILATION_HYSTERESIS) fanOn = false;
-  
-  if(temperature < WARNING_THRESHOLD) temperatureWarning =  true;
-  if(temperature > WARNING_THRESHOLD + WARNING_HYSTERESIS) temperatureWarning =  false;
+  if(temperature > TEMPERATURE_WARNING_THRESHOLD) temperatureWarning =  true;
+  if(temperature < TEMPERATURE_WARNING_THRESHOLD - TEMPERATURE_WARNING_HYSTERESIS) temperatureWarning =  false;
 
   fanPinOut.set(fanOn ? HIGH : LOW); 
 

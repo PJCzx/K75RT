@@ -1,6 +1,6 @@
 #include "Helper.h"
 #include "PCF8574.h"
-#include "DigitalPin.h"
+#include "AdvancedPin.h"
 
 using namespace std;
 
