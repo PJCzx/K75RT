@@ -12,39 +12,41 @@ char auth[] = "lsqhnFAbstIc_xXw6CN1VfxBQ2J8XYBx";
 //ANALOGS A0 -> A7 
 
 int lightSensorPinIn          = A0; 
-int temperatureSensorPinIn    = A1;
-int oilPressureSensorPinIn    = A2;
-int fuelSensorPinIn           = A3;
+int temperatureSensorPinIn    = A1; //OK
+int oilPressureSensorPinIn    = A2; //OK
+int fuelSensorPinIn           = A3; //OK
 // A4 + A5 -> SDA + SCL
-int fuelIndicatorPin          = A6;
-int available_2               = A7;
+int fuelIndicatorPinOut       = A6; //OK
+int speedIdicatorPinOut       = A7; // TODO : ANALOG | DIGITAL ?
 
 
 //DIGITALS 2 -> 13
 
 int mUnitLightOutputPinIn = 2;
-int rpmPin                = 3;
-int fanPin                = 4;
-int speedPin              = 5;
+int rpmPinIn              = 3; // TODO trouver une entrée
+int rpmPinOut             = 3; //OK
+int fanPinOut             = 4; //OK
+int speedPinIn_wheel      = 5; //OK TODO : Choisir
+int speedPinIn_abs        = 5; //OK TODO : Choisir
 
-int neutralPin            = 7;
-int gear1Pin              = 8;
-int gear2Pin              = 9;
-int gear3Pin              = 10;            
-int gear4Pin              = 11;
-int gear5Pin              = 12;
-int warningPin            = 13;
+int neutralPinOut         = 7;  //OK
+int gear1PinOut           = 8; //OK
+int gear2PinOut           = 9; //OK
+int gear3PinOut           = 10; //OK           
+int gear4PinOut           = 11; //OK
+int gear5PinOut           = 12; //OK
+int warningPinOut         = 13;
 
 //( A4 : SDA / A5 : SCL)
 PCF8574 pcf8574_1(0x20); //P0 -> P7
 
-int lightSwitchPosition1PinIn = 0;
-int lightSwitchPosition2PinIn = 1;
+int lightSwitchPosition1PinIn = 0; //OK
+int lightSwitchPosition2PinIn = 1; //OK
 int ledRingPinOut             = 2;
-int headlightPinOut           = 3;
-int gearBox1PinIn             = 4;
-int gearBox2PinIn             = 5;
-int gearBox3PinIn             = 6;
+int headlightPinOut           = 3; 
+int gearBox1PinIn             = 4; //OK
+int gearBox2PinIn             = 5; //OK
+int gearBox3PinIn             = 6; //OK
 //P7 AVAILABLE
 
 float temperatureSensorValue = 0;  
@@ -136,15 +138,15 @@ void setup() {
   pinMode(lightSensorPinIn, INPUT);
 
   //Sorties
-  pinMode(fanPin, OUTPUT);
-  pinMode(warningPin, OUTPUT);
-  pinMode(neutralPin, OUTPUT);
-  pinMode(fuelIndicatorPin, OUTPUT);
-  pinMode(gear1Pin, OUTPUT);
-  pinMode(gear2Pin, OUTPUT);
-  pinMode(gear3Pin, OUTPUT);
-  pinMode(gear4Pin, OUTPUT);
-  pinMode(gear5Pin, OUTPUT);
+  pinMode(fanPinOut, OUTPUT);
+  pinMode(warningPinOut, OUTPUT);
+  pinMode(neutralPinOut, OUTPUT);
+  pinMode(fuelIndicatorPinOut, OUTPUT);
+  pinMode(gear1PinOut, OUTPUT);
+  pinMode(gear2PinOut, OUTPUT);
+  pinMode(gear3PinOut, OUTPUT);
+  pinMode(gear4PinOut, OUTPUT);
+  pinMode(gear5PinOut, OUTPUT);
   pinMode(ledRingPinOut, OUTPUT);
   pinMode(headlightPinOut, OUTPUT);
 
@@ -331,7 +333,7 @@ void loop() {
   *********************************/  
   
   //Get tachymeter state
-  currentRPMState = digitalRead(rpmPin);
+  currentRPMState = digitalRead(rpmPinIn);
   
   //if state changed since last check
   if(currentRPMState == previousRPMState) {
@@ -341,20 +343,22 @@ void loop() {
     int segments = 2;
     float secondesParSegments = (float)timeSpentAtPreviousRPMState*2/1000;
     rpm = 60.0/secondesParSegments*segments;
-    if(rpm >= SHIFT_LIGHT_THERSHOLD_MAX){
+    if(rpm >= SHIFT_LIGHT_THERSHOLD_MAX){ //TODO : Define another threshold ?
       rpmWarning = true;
     } else if(rpm <= SHIFT_LIGHT_THERSHOLD_MIN){
       rpmWarning = false;
     }
     timeSpentAtPreviousRPMState = 0;
   }
+
+  //TODO : Ecrire le pulse sur rpmPinOut
   
   /**********************************
   SPEED
   **********************************/
   
   //Get speed state
-  currentRPMState = digitalRead(speedPin);
+  currentRPMState = digitalRead(speedPinIn_wheel); //TODO : choisir avec ABS
   
   //if state changed since last check
   if(currentSpeedState == previousSpeedState) {
@@ -378,7 +382,8 @@ void loop() {
     //vitesseEnKMparMilisec*1000*60*60 > Heure
     
     kmh = vitesseEnMMparMilisec/1000/1000*1000*60*60;
-    
+
+    //TODO : Write pulse on speedIdicatorPinOut
 
     timeSpentAtPreviousSpeedState = 0;
   }
@@ -411,7 +416,7 @@ void loop() {
   if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) temperatureWarning =  true;
   if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) temperatureWarning =  false;
 
-  digitalWrite(fanPin, fanOn ? HIGH : LOW); 
+  digitalWrite(fanPinOut, fanOn ? HIGH : LOW); 
 
   
   
@@ -435,12 +440,12 @@ void loop() {
   else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) gear = 6;
   else { gear = -1; gearWarning = true; }
 
-  digitalWrite(neutralPin, gear == 0 ? HIGH : LOW);
-  digitalWrite(gear1Pin, gear == 1 ? HIGH : LOW);
-  digitalWrite(gear2Pin, gear == 2 ? HIGH : LOW);
-  digitalWrite(gear3Pin, gear == 3 ? HIGH : LOW);
-  digitalWrite(gear4Pin, gear == 4 ? HIGH : LOW);
-  digitalWrite(gear5Pin, gear == 5 ? HIGH : LOW);
+  digitalWrite(neutralPinOut, gear == 0 ? HIGH : LOW);
+  digitalWrite(gear1PinOut, gear == 1 ? HIGH : LOW);
+  digitalWrite(gear2PinOut, gear == 2 ? HIGH : LOW);
+  digitalWrite(gear3PinOut, gear == 3 ? HIGH : LOW);
+  digitalWrite(gear4PinOut, gear == 4 ? HIGH : LOW);
+  digitalWrite(gear5PinOut, gear == 5 ? HIGH : LOW);
   
   /**********************************
   FUEL
@@ -450,9 +455,9 @@ void loop() {
   float fuelSensor = mapf(analogRead(fuelSensorPinIn), 0, 1023, 0, 100);
 
   if(fuelSensor <= FUEL_LEVEL_THERSHOLD_MIN) {
-    analogWrite(fuelIndicatorPin, 255); 
+    analogWrite(fuelIndicatorPinOut, 255); 
   } else if(fuelSensor >= FUEL_LEVEL_THERSHOLD_MAX) {
-    analogWrite(fuelIndicatorPin, 0); 
+    analogWrite(fuelIndicatorPinOut, 0); 
   }
   
   /**********************************
@@ -461,7 +466,7 @@ void loop() {
   
   globalWarning = oilPressureWarning || gearWarning || temperatureWarning || rpmWarning;
 
-  digitalWrite(warningPin, globalWarning ? HIGH : LOW); 
+  digitalWrite(warningPinOut, globalWarning ? HIGH : LOW); 
   
   
 
