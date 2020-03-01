@@ -19,25 +19,23 @@ PCF8574 pcf8574_1(0x20);
 PCF8574 pcf8574_2(0x21); //P0 -> P7
 
 //INPUTS
-int lightSensorPinIn          = A0; 
-int temperatureSensorPinIn    = A1; //OK
-int oilPressureSensorPinIn    = A2; //OK
-int fuelSensorPinIn           = A3; //OK
-
+AnalogicPin lightSensorPinIn        (INPUT, A0);
+AnalogicPin temperatureSensorPinIn  (INPUT, A1); //OK
+AnalogicPin oilPressureSensorPinIn  (INPUT, A2); //OK
+AnalogicPin fuelSensorPinIn         (INPUT, A3); //OK
 
 DigitalPin mUnitLightOutputPinIn      (INPUT, 2);
 DigitalPin rpmPinIn                   (INPUT, 3);
 DigitalPin speedPinIn_wheel           (INPUT, 4); //OK TODO : Choisir
-//DigitalPin speedPinIn_abs             (INPUT, 4); //OK TODO : Choisir
+//DigitalPin speedPinIn_abs           map  (INPUT, 4); //OK TODO : Choisir
 DigitalPin lightSwitchPosition1PinIn  (INPUT, 5); //OK
 DigitalPin lightSwitchPosition2PinIn  (INPUT, 6); //OK
 DigitalPin gearBox1PinIn              (INPUT, 7); //OK
 DigitalPin gearBox2PinIn              (INPUT, 8); //OK
 DigitalPin gearBox3PinIn              (INPUT, 9); //OK
-//TODO : ATTENTIOTN ENTR2E
 
 //OUTPUTS
-int fuelIndicatorPinOut       = A6; //OK
+AnalogicPin fuelIndicatorPinOut  (OUTPUT, A6); //OK
 DigitalPin ledRingPinOut         (OUTPUT, &pcf8574_1, 0);
 DigitalPin headlightPinOut       (OUTPUT, &pcf8574_1, 1); 
 DigitalPin speedIdicatorPinOut   (OUTPUT, &pcf8574_1, 2);
@@ -84,19 +82,21 @@ boolean rpmWarning = false;
    * "le ventilo se déclenchait vers 29,5 ce qui doit correspondre à 101°c valeur normale"
    */
  /* 
- * 103° > Ventilateur ON (175 OHMS)
- * 111° > Warning ON (143 OHMS)
+ * 
+ * 
  */
-const float VENTILATION_THRESHOLD_OHMS = 175;
-const float VENTILATION_HYSTERESIS = 1000;
-const float WARNING_THRESHOLD_OHMS = 143;
+const float VENTILATION_THRESHOLD = 103; //103° > Ventilateur ON (175 OHMS)
+const float VENTILATION_HYSTERESIS = 5; //5° TODO : Verifier si cela nous convient
+const float WARNING_THRESHOLD = 111; // 111° = (143 OHMS)
 const float WARNING_HYSTERESIS = 100;
 
 const int SHIFT_LIGHT_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
 const int SHIFT_LIGHT_THERSHOLD_MIN = 8400; // LA ZONE SUR LE COMPTEUR BMX EST ENTRE 8500 ET 9000
 
-const int FUEL_LEVEL_THERSHOLD_MAX = 15; //S'allume en dessous de 10%
-const int FUEL_LEVEL_THERSHOLD_MIN = 10; //S'éteint au dessus de 15%
+const int FUEL_LEVEL_THERSHOLD_MAX = 0.15; //S'allume en dessous de 10%
+const int FUEL_LEVEL_THERSHOLD_MIN = 0.10; //S'éteint au dessus de 15%
+const int FUEL_LEVEL_HIGH = 1.0; //S'éteint au dessus de 15%
+const int FUEL_LEVEL_LOW = 0.0; //S'éteint au dessus de 15%
 
 const int LIGHT_SWITH_POSITION_OFF = 0;
 const int LIGHT_SWITH_POSITION_PARKING_LIGHT = 1;
@@ -104,18 +104,6 @@ const int LIGHT_SWITH_POSITION_LOW_BEAM = 2;
 const float LIGHT_SENSOR_THRESHOLD_MIN = 0.33;
 const float LIGHT_SENSOR_THRESHOLD_MAX = 0.66;
 const float OIL_PRESURE_THESHOLD_MIN = 0.33;
-
-
-
-float mapf(double val, double in_min, double in_max, double out_min, double out_max) {
-    return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-boolean analogToDigital(int value) {
-       if (value < 1023*0.3) return LOW;
-  else if (value > 1023*0.7) return HIGH;
-  else return NULL;
-}
 
 void setup() {
   /*
@@ -126,10 +114,10 @@ void setup() {
   */
 
   //Entrées
-  pinMode(lightSensorPinIn, INPUT);
-  pinMode(temperatureSensorPinIn, INPUT);
-  pinMode(oilPressureSensorPinIn, INPUT);
-  pinMode(fuelSensorPinIn, INPUT);
+  lightSensorPinIn.setup();
+  temperatureSensorPinIn.setup();
+  oilPressureSensorPinIn.setup();
+  fuelSensorPinIn.setup();
   mUnitLightOutputPinIn.setup();
   rpmPinIn.setup();
   speedPinIn_wheel.setup();
@@ -142,7 +130,7 @@ void setup() {
   
 
   //Sorties
-  pinMode(fuelIndicatorPinOut, OUTPUT);
+  fuelIndicatorPinOut.setup();
   ledRingPinOut.setup();
   headlightPinOut.setup();
   speedIdicatorPinOut.setup();
@@ -268,7 +256,7 @@ void loop() {
         }
 
         //Light sensor value
-        int lightSensorValue = analogRead(lightSensorPinIn);
+        float lightSensorValue = lightSensorPinIn.value();
         
         if(lightSwitchPosition == LIGHT_SWITH_POSITION_PARKING_LIGHT) {
             //Blynk.virtualWrite(V1, "PARKING_LIGHT");
@@ -322,8 +310,7 @@ void loop() {
   OIL
   **********************************/
   
-  float val = analogRead(oilPressureSensorPinIn);
-  float oilPressure = mapf(val, 0, 1023,0,1); 
+  float oilPressure = oilPressureSensorPinIn.value();
   oilPressureWarning = oilPressure <= OIL_PRESURE_THESHOLD_MIN ? true : false;
   
 
@@ -394,13 +381,10 @@ void loop() {
   
   //Mesure de la valeur de la sonde température moteur
   
-  temperatureSensorValue = analogRead(temperatureSensorPinIn);
+  temperatureSensorValue = temperatureSensorPinIn.value();
   
-  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float temperatureSensorVoltage = mapf(temperatureSensorValue, 0, 1023,0,5);
-
   //Calcul de la résistance en fonction de la tension mesurée  
-  float temperatureSensorResistance = mapf(temperatureSensorVoltage,0,5,3000,0);
+  float temperature = mapf(temperatureSensorValue,0.0,1.0,0.0,1.0); //TODO : FIND MATCHING VALUES
 
   //Conversion de la résistance en température
   //TODO (utile ?) 
@@ -409,11 +393,11 @@ void loop() {
    
   
   //Application des mesures nécessaire vis-à-vis de la résitance mesurés
-  if(temperatureSensorResistance < VENTILATION_THRESHOLD_OHMS) fanOn = true;
-  if(temperatureSensorResistance > VENTILATION_THRESHOLD_OHMS + VENTILATION_HYSTERESIS) fanOn = false;
+  if(temperature < VENTILATION_THRESHOLD) fanOn = true;
+  if(temperature > VENTILATION_THRESHOLD + VENTILATION_HYSTERESIS) fanOn = false;
   
-  if(temperatureSensorResistance < WARNING_THRESHOLD_OHMS) temperatureWarning =  true;
-  if(temperatureSensorResistance > WARNING_THRESHOLD_OHMS + WARNING_HYSTERESIS) temperatureWarning =  false;
+  if(temperature < WARNING_THRESHOLD) temperatureWarning =  true;
+  if(temperature > WARNING_THRESHOLD + WARNING_HYSTERESIS) temperatureWarning =  false;
 
   fanPinOut.set(fanOn ? HIGH : LOW); 
 
@@ -451,12 +435,12 @@ void loop() {
   **********************************/
   
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float fuelSensor = mapf(analogRead(fuelSensorPinIn), 0, 1023, 0, 100);
+  float fuelSensor = fuelSensorPinIn.value();
 
   if(fuelSensor <= FUEL_LEVEL_THERSHOLD_MIN) {
-    analogWrite(fuelIndicatorPinOut, 255); 
+    fuelIndicatorPinOut.set(FUEL_LEVEL_HIGH); 
   } else if(fuelSensor >= FUEL_LEVEL_THERSHOLD_MAX) {
-    analogWrite(fuelIndicatorPinOut, 0); 
+    fuelIndicatorPinOut.set(FUEL_LEVEL_LOW); 
   }
   
   /**********************************
@@ -499,10 +483,9 @@ void loop() {
     text += "/tTS:/t";
       //INPUTS
       text += (float)(temperatureSensorValue);
-      text += "\tVoltage: ";
-      text += (float)(temperatureSensorVoltage);
+
       text += "\tΩ: ";
-      text += (float)(temperatureSensorResistance);
+      text += (float)(temperature);
       
       //OUTPUTS
       text += "\tState/Warning: ";
