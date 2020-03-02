@@ -33,6 +33,8 @@ boolean fanOn = false;
 boolean gearWarning = false;
 boolean temperatureWarning = false;
 boolean rpmWarning = false;
+unsigned int executionPerSeconds = 0;
+unsigned int secondsElapsed = 0;
 
  /*
  * POST #23 http://bmist.forumpro.fr/t100118-probleme-sonde-temperature-ldr-k75?highlight=sonde+temp%E9rature
@@ -116,6 +118,13 @@ BLYNK_READ(V5)
 
 void loop() {
   k75.loopInit();
+  if(millis()/1000 > secondsElapsed) {
+    secondsElapsed = millis()/1000;
+    executionPerSeconds = 0;
+  }
+  executionPerSeconds++;
+   
+
   
   //Blynk.run();
   
@@ -357,7 +366,8 @@ void loop() {
     serialLastSent = stopwatch.currentMillis;
 
      String text = "";
-
+    text+= "executionPerSeconds : ";
+    text += executionPerSeconds;
     //LIGHTS
       //INPUTS
       //OUTPUTS
