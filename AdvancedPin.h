@@ -8,9 +8,9 @@ using namespace std;
 
 class DigitalPin {
   protected:   
-    int pin;
-    PCF8574* pcf8574 = NULL;
     int ioType;
+    PCF8574* pcf8574 = NULL;
+    int pin;
     
   public: 
     DigitalPin(int io_type, int pin);
@@ -27,9 +27,8 @@ class DigitalPin {
 
 class AnalogicPin {
   private:   
-    int pin;
     int ioType;
-    
+    int pin;
   public: 
     AnalogicPin(int io_type, int pin);
     

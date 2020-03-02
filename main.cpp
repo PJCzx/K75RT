@@ -19,7 +19,7 @@ float oilPresureSensorValue = 0;
 float gearBox1Value = 0;
 float gearBox2Value = 0;
 float gearBox3Value = 0;
-int serialDelay = 500;
+unsigned int serialDelay = 500;
 int serialLastSent = 0;
 unsigned long int timeSpentAtPreviousRPMState;
 bool currentRPMState;
