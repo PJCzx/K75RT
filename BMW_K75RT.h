@@ -5,7 +5,6 @@
 #include "PCF8574.h"
 #include "AdvancedPin.h"
 
-
 using namespace std;
 
 class BMW_K75RT {
@@ -20,7 +19,7 @@ class BMW_K75RT {
     AnalogicPin * oilPressureSensorPinIn;     //OK
     AnalogicPin * fuelSensorPinIn;            //OK
     
-    DigitalPin * mUnitLightOutputPinIn;
+    DigitalPin mUnitLightOutputPinIn;
     DigitalPin * rpmPinIn;
     DigitalPin * speedPinIn_wheel;            //OK TODO : Choisir
     DigitalPin * speedPinIn_abs;              //OK TODO : Choisir
@@ -58,6 +57,7 @@ class BMW_K75RT {
     BMW_K75RT();
     void setup();
     void loopInit();
+    void sayHello();
     bool isOilPresureOK();
     
    

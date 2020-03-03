@@ -1,15 +1,23 @@
+#include "Arduino.h"
 #include "Helper.h"
 #include "PCF8574.h"
 #include "AdvancedPin.h"
 
 using namespace std;
 
+DigitalPin::DigitalPin(): ioType(INPUT), pin(1) { }; //TODO / This works but seems wrong
 DigitalPin::DigitalPin(int ioType, int pin): ioType(ioType), pin(pin) { };
 DigitalPin::DigitalPin(int ioType, PCF8574* pcf8574, int pin): ioType(ioType), pcf8574(pcf8574), pin(pin) { };
         
 void DigitalPin::setup(int setupValue) {
     if (pcf8574 == NULL) pinMode(pin, setupValue != -1 ? setupValue : ioType);
     else pcf8574->pinMode(pin, setupValue != -1 ? setupValue : ioType);
+}
+
+void DigitalPin::sayHello() {
+    Serial.print("DigitalPin says Hi :) ");
+    Serial.print("I'm set to pin :");
+    Serial.println(pin);
 }
 
 bool DigitalPin::state() {

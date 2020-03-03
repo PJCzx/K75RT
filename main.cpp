@@ -2,6 +2,7 @@
 #include "PCF8574.h" // https://github.com/xreef/PCF8574_library
 #include "AdvancedPin.h"
 #include "BMW_K75RT.h"
+#include "string.h"
 /*
 #define BLYNK_USE_DIRECT_CONNECT
 #include <SoftwareSerial.h>
@@ -61,6 +62,9 @@ const float LIGHT_SENSOR_THRESHOLD_MAX = 0.66;
 //const float OIL_PRESURE_THESHOLD_MIN = 0.33;
 
 void setup() {
+  secondsElapsed = 0;
+  Serial.begin(115200);
+  Serial.println("Setup");
   /*
   //DebugSerial.begin(9600);
   //DebugSerial.println("Waiting for connections...");
@@ -81,7 +85,6 @@ void setup() {
   previousSpeedState = LOW;
   timeSpentAtPreviousSpeedState = 0;
   kmh = 0.0;
-
 }
 
 
@@ -116,15 +119,36 @@ BLYNK_READ(V5)
 }
 */
 
-void loop() {
+void loop(){
   k75.loopInit();
+
+  if(millis()/1000 > secondsElapsed) {
+      secondsElapsed = millis()/1000;
+      Serial.print("executionPerSeconds : ");
+      Serial.println(executionPerSeconds);
+      k75.sayHello();
+      k75.mUnitLightOutputPinIn.sayHello();
+      executionPerSeconds = 0;
+    }
+    executionPerSeconds++;
+    stopwatch.run();
+  }
+
+void ORIGINAL_loop() {
+  
+  k75.loopInit();
+
+  //TODO : Utiliser le stopwatch ?
+  
   if(millis()/1000 > secondsElapsed) {
     secondsElapsed = millis()/1000;
+    Serial.print("executionPerSeconds : ");
+    Serial.println(executionPerSeconds);
     executionPerSeconds = 0;
   }
   executionPerSeconds++;
    
-
+  //TODO : Etudier s'il est intelligent de regrouper toute les rectures de PIN en 1 seule fois pour mettre toutes les variables à jours et éxécuter le code ensuite ?
   
   //Blynk.run();
   
@@ -137,7 +161,7 @@ void loop() {
   LIGHTS
   **********************************/
   
-  bool mUnitLightVal = k75.mUnitLightOutputPinIn->state(); 
+  bool mUnitLightVal = k75.mUnitLightOutputPinIn.state(); 
   
   if(mUnitLightVal == HIGH) {
         // IN THIS CASE, M-UNIT ASK LIGHS TOBE OFF AND WILL TRIGGER HIGHBEAM
@@ -423,8 +447,8 @@ void loop() {
    
 
 
-    Serial.begin(9600);
-    Serial.println(text);  
-    Serial.end();
+    //Serial.begin(9600);
+    //Serial.println(text);  
+    //Serial.end();
   }
 }

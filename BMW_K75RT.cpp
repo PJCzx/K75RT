@@ -6,7 +6,6 @@
 using namespace std;
 
 BMW_K75RT::BMW_K75RT() {
-
 /*
   ANALOGS A0 -> A7 (!) A4 + A5 -> SDA + SCL
   DIGITALS ARDUINO 2 -> 13
@@ -23,7 +22,7 @@ BMW_K75RT::BMW_K75RT() {
 * oilPressureSensorPinIn     = AnalogicPin(INPUT, A2); //OK
 * fuelSensorPinIn            = AnalogicPin(INPUT, A3); //OK
 
-* mUnitLightOutputPinIn      = DigitalPin(INPUT, 2);
+mUnitLightOutputPinIn      =  DigitalPin(INPUT, 2);
 * rpmPinIn                   = DigitalPin(INPUT, 3);
 * speedPinIn_wheel           = DigitalPin(INPUT, 4);  //OK TODO : Choisir
 * speedPinIn_abs             = DigitalPin(INPUT, 5);  //OK TODO : Choisir
@@ -57,7 +56,7 @@ void BMW_K75RT::setup () {
   temperatureSensorPinIn    ->setup();
   oilPressureSensorPinIn    ->setup();
   fuelSensorPinIn           ->setup();
-  mUnitLightOutputPinIn     ->setup();
+  mUnitLightOutputPinIn     .setup();
   rpmPinIn                  ->setup();
   speedPinIn_wheel          ->setup();
   speedPinIn_abs            ->setup();
@@ -88,6 +87,9 @@ void BMW_K75RT::setup () {
 
 void BMW_K75RT::loopInit() {
   globalWarning = false;
+}
+void BMW_K75RT::sayHello() {
+  Serial.println("BMW_K75RT says : Hi :)");
 }
 
 bool BMW_K75RT::isOilPresureOK() { 

@@ -1,6 +1,7 @@
 #ifndef __digitalpin
 #define __digitalpin
 
+#include "Arduino.h"
 #include "Helper.h"
 #include "PCF8574.h"
 
@@ -12,11 +13,14 @@ class DigitalPin {
     PCF8574* pcf8574 = NULL;
     int pin;
     
-  public: 
+  public:
+    DigitalPin();
     DigitalPin(int io_type, int pin);
     DigitalPin(int io_type, PCF8574* pcf8574, int pin);
     
     void setup(int setupValue = -1);
+
+    void sayHello();
 
     bool state();
 
