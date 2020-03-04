@@ -19,7 +19,7 @@ class BMW_K75RT {
     AnalogicPin * oilPressureSensorPinIn;     //OK
     AnalogicPin * fuelSensorPinIn;            //OK
     
-    DigitalPin mUnitLightOutputPinIn;
+    DigitalPin * mUnitLightOutputPinIn;
     DigitalPin * rpmPinIn;
     DigitalPin * speedPinIn_wheel;            //OK TODO : Choisir
     DigitalPin * speedPinIn_abs;              //OK TODO : Choisir
@@ -46,7 +46,8 @@ class BMW_K75RT {
     DigitalPin * gear4PinOut;                 //OK
     DigitalPin * gear5PinOut;                 //OK
 
-
+    int gear;
+    
     const float OIL_PRESURE_THESHOLD_MIN = 0.33;
 
   public:

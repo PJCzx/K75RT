@@ -17,11 +17,10 @@ BMW_K75RT k75 = BMW_K75RT();
 
 float temperatureSensorValue = 0;  
 float oilPresureSensorValue = 0;
-float gearBox1Value = 0;
-float gearBox2Value = 0;
-float gearBox3Value = 0;
+bool gearBox1Value = 0;
+bool gearBox2Value = 0;
+bool gearBox3Value = 0;
 unsigned int serialDelay = 500;
-int serialLastSent = 0;
 unsigned long int timeSpentAtPreviousRPMState;
 bool currentRPMState;
 bool previousRPMState;
@@ -118,35 +117,9 @@ BLYNK_READ(V5)
   Blynk.virtualWrite(V5, input0); 
 }
 */
-
-void loop(){
-  k75.loopInit();
-
-  if(millis()/1000 > secondsElapsed) {
-      secondsElapsed = millis()/1000;
-      Serial.print("executionPerSeconds : ");
-      Serial.println(executionPerSeconds);
-      k75.sayHello();
-      k75.mUnitLightOutputPinIn.sayHello();
-      executionPerSeconds = 0;
-    }
-    executionPerSeconds++;
-    stopwatch.run();
-  }
-
-void ORIGINAL_loop() {
+void loop() {
   
   k75.loopInit();
-
-  //TODO : Utiliser le stopwatch ?
-  
-  if(millis()/1000 > secondsElapsed) {
-    secondsElapsed = millis()/1000;
-    Serial.print("executionPerSeconds : ");
-    Serial.println(executionPerSeconds);
-    executionPerSeconds = 0;
-  }
-  executionPerSeconds++;
    
   //TODO : Etudier s'il est intelligent de regrouper toute les rectures de PIN en 1 seule fois pour mettre toutes les variables à jours et éxécuter le code ensuite ?
   
@@ -161,7 +134,7 @@ void ORIGINAL_loop() {
   LIGHTS
   **********************************/
   
-  bool mUnitLightVal = k75.mUnitLightOutputPinIn.state(); 
+  bool mUnitLightVal = k75.mUnitLightOutputPinIn->state(); 
   
   if(mUnitLightVal == HIGH) {
         // IN THIS CASE, M-UNIT ASK LIGHS TOBE OFF AND WILL TRIGGER HIGHBEAM
@@ -341,22 +314,22 @@ void ORIGINAL_loop() {
 
   //conversion en numéro de vitesse
   gearWarning = false;
-  int gear;
-       if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == LOW)   gear = 0;
-  else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == LOW)   gear = 1;
-  else if(gearBox1Value == LOW   && gearBox2Value == HIGH && gearBox3Value == LOW)   gear = 2;
-  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == LOW)   gear = 3;
-  else if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == HIGH ) gear = 4;
-  else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == HIGH ) gear = 5;
-  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) gear = 6;
-  else { gear = -1; gearWarning = true; }
+  
+       if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == LOW)   k75.gear = 0;
+  else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == LOW)   k75.gear = 1;
+  else if(gearBox1Value == LOW   && gearBox2Value == HIGH && gearBox3Value == LOW)   k75.gear = 2;
+  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == LOW)   k75.gear = 3;
+  else if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == HIGH ) k75.gear = 4;
+  else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == HIGH ) k75.gear = 5;
+  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) k75.gear = 6;
+  else { k75.gear = -1; gearWarning = true; }
 
-  k75.neutralPinOut->set(gear == 0 ? HIGH : LOW);
-  k75.gear1PinOut->set(gear == 1 ? HIGH : LOW);
-  k75.gear2PinOut->set(gear == 2 ? HIGH : LOW);
-  k75.gear3PinOut->set(gear == 3 ? HIGH : LOW);
-  k75.gear4PinOut->set(gear == 4 ? HIGH : LOW);
-  k75.gear5PinOut->set(gear == 5 ? HIGH : LOW);
+  k75.neutralPinOut->set(k75.gear == 0 ? HIGH : LOW);
+  k75.gear1PinOut->set(k75.gear == 1 ? HIGH : LOW);
+  k75.gear2PinOut->set(k75.gear == 2 ? HIGH : LOW);
+  k75.gear3PinOut->set(k75.gear == 3 ? HIGH : LOW);
+  k75.gear4PinOut->set(k75.gear == 4 ? HIGH : LOW);
+  k75.gear5PinOut->set(k75.gear == 5 ? HIGH : LOW);
   
   /**********************************
   FUEL
@@ -384,14 +357,14 @@ void ORIGINAL_loop() {
   /*********************************************
   SERIAL WRITE
   *********************************************/
+   //TODO : Utiliser le stopwatch ?
   
-   
-  if (abs(stopwatch.currentMillis - serialLastSent) >= serialDelay) {
-    serialLastSent = stopwatch.currentMillis;
+  if(millis()/1000 > secondsElapsed) {
 
      String text = "";
-    text+= "executionPerSeconds : ";
+    text+= "eps : ";
     text += executionPerSeconds;
+    text += "\t";
     //LIGHTS
       //INPUTS
       //OUTPUTS
@@ -409,7 +382,7 @@ void ORIGINAL_loop() {
        //OUTPUTS
          
     //TEMPERATURE MOTEUR ET VENTILATION
-    text += "/tTS:/t";
+    text += "\tTS:\t";
       //INPUTS
       text += (float)(temperatureSensorValue);
 
@@ -423,17 +396,14 @@ void ORIGINAL_loop() {
       
     //GEARBOX
     text += "\tGear:\t";
-      //INPUTS
-      text += (int)(gearBox1Value);
-      text += " ";
-      text += (int)(gearBox2Value);
-      text += " ";
-      text += (int)(gearBox3Value);
-      text += "\t";
+      text += (int) k75.gear;
+      text += " (";
+      text += gearBox1Value;
+      text += gearBox2Value;
+      text += gearBox3Value;
+      text += ")\t";
       
-      //OUTPUTS
-      text += (int)(gear);
-    
+
           
     //FUEL
       //INPUTS
@@ -442,13 +412,13 @@ void ORIGINAL_loop() {
     //ALERTE
       //INPUTS
       //OUTPUTS
-      text += k75.globalWarning ? "X" : "-";
-    
-   
+      text += "/!\\(";
+      text += k75.globalWarning ? "X)" : "-)";
+  
+    Serial.println(text);
 
-
-    //Serial.begin(9600);
-    //Serial.println(text);  
-    //Serial.end();
+    secondsElapsed = millis()/1000;
+    executionPerSeconds = 0;
   }
+  executionPerSeconds++;
 }

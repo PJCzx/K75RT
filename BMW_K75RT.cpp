@@ -13,41 +13,41 @@ BMW_K75RT::BMW_K75RT() {
 */
 
 //EXTENDERS
-* pcf8574_1                  = PCF8574(0x20);
-* pcf8574_2                  = PCF8574(0x21);
+this->pcf8574_1                  = new PCF8574(0x20);
+this->pcf8574_2                  = new PCF8574(0x21);
 
 //INPUTS
-* lightSensorPinIn           = AnalogicPin(INPUT, A0);
-* temperatureSensorPinIn     = AnalogicPin(INPUT, A1); //OK
-* oilPressureSensorPinIn     = AnalogicPin(INPUT, A2); //OK
-* fuelSensorPinIn            = AnalogicPin(INPUT, A3); //OK
+this->lightSensorPinIn           = new  AnalogicPin(INPUT, A0);
+this->temperatureSensorPinIn     = new AnalogicPin(INPUT, A1); //OK
+this->oilPressureSensorPinIn     = new AnalogicPin(INPUT, A2); //OK
+this->fuelSensorPinIn            = new AnalogicPin(INPUT, A3); //OK
 
-mUnitLightOutputPinIn      =  DigitalPin(INPUT, 2);
-* rpmPinIn                   = DigitalPin(INPUT, 3);
-* speedPinIn_wheel           = DigitalPin(INPUT, 4);  //OK TODO : Choisir
-* speedPinIn_abs             = DigitalPin(INPUT, 5);  //OK TODO : Choisir
-* lightSwitchPosition1PinIn  = DigitalPin(INPUT, 6);  //OK
-* lightSwitchPosition2PinIn  = DigitalPin(INPUT, 7);  //OK
-* gearBox1PinIn              = DigitalPin(INPUT, 8);  //OK
-* gearBox2PinIn              = DigitalPin(INPUT, 9);  //OK
-* gearBox3PinIn              = DigitalPin(INPUT, 10); //OK
+this->mUnitLightOutputPinIn      = new DigitalPin(INPUT, 2);
+this->rpmPinIn                   = new DigitalPin(INPUT, 3);
+this->speedPinIn_wheel           = new DigitalPin(INPUT, 4);  //OK TODO : Choisir
+this->speedPinIn_abs             = new DigitalPin(INPUT, 5);  //OK TODO : Choisir
+this->lightSwitchPosition1PinIn  = new DigitalPin(INPUT, 6);  //OK
+this->lightSwitchPosition2PinIn  = new DigitalPin(INPUT, 7);  //OK
+this->gearBox1PinIn              = new DigitalPin(INPUT, 8);  //OK
+this->gearBox2PinIn              = new DigitalPin(INPUT, 9);  //OK
+this->gearBox3PinIn              = new DigitalPin(INPUT, 10); //OK
 
 //OUTPUTS
-* fuelIndicatorPinOut       = AnalogicPin(OUTPUT, A6); //OK
+this->fuelIndicatorPinOut       = new AnalogicPin(OUTPUT, A6); //OK
 
-* ledRingPinOut             = DigitalPin(OUTPUT, pcf8574_1, 0);
-* headlightPinOut           = DigitalPin(OUTPUT, pcf8574_1, 1); 
-* speedIdicatorPinOut       = DigitalPin(OUTPUT, pcf8574_1, 2);
-* rpmPinOut                 = DigitalPin(OUTPUT, pcf8574_1, 3); //OK
-* fanPinOut                 = DigitalPin(OUTPUT, pcf8574_1, 4); //OK
-* warningPinOut             = DigitalPin(OUTPUT, pcf8574_1, 5);
+this->ledRingPinOut             = new DigitalPin(OUTPUT, pcf8574_1, 0);
+this->headlightPinOut           = new DigitalPin(OUTPUT, pcf8574_1, 1); 
+this->speedIdicatorPinOut       = new DigitalPin(OUTPUT, pcf8574_1, 2);
+this->rpmPinOut                 = new DigitalPin(OUTPUT, pcf8574_1, 3); //OK
+this->fanPinOut                 = new DigitalPin(OUTPUT, pcf8574_1, 4); //OK
+this->warningPinOut             = new DigitalPin(OUTPUT, pcf8574_1, 5);
 
-* neutralPinOut             = DigitalPin(OUTPUT, pcf8574_2, 0); //OK
-* gear1PinOut               = DigitalPin(OUTPUT, pcf8574_2, 1); //OK
-* gear2PinOut               = DigitalPin(OUTPUT, pcf8574_2, 2); //OK
-* gear3PinOut               = DigitalPin(OUTPUT, pcf8574_2, 3); //OK           
-* gear4PinOut               = DigitalPin(OUTPUT, pcf8574_2, 4); //OK
-* gear5PinOut               = DigitalPin(OUTPUT, pcf8574_2, 5); //OK
+this->neutralPinOut             = new DigitalPin(OUTPUT, pcf8574_2, 0); //OK
+this->gear1PinOut               = new DigitalPin(OUTPUT, pcf8574_2, 1); //OK
+this->gear2PinOut               = new DigitalPin(OUTPUT, pcf8574_2, 2); //OK
+this->gear3PinOut               = new DigitalPin(OUTPUT, pcf8574_2, 3); //OK           
+this->gear4PinOut               = new DigitalPin(OUTPUT, pcf8574_2, 4); //OK
+this->gear5PinOut               = new DigitalPin(OUTPUT, pcf8574_2, 5); //OK
 }
 
 void BMW_K75RT::setup () {
@@ -56,7 +56,7 @@ void BMW_K75RT::setup () {
   temperatureSensorPinIn    ->setup();
   oilPressureSensorPinIn    ->setup();
   fuelSensorPinIn           ->setup();
-  mUnitLightOutputPinIn     .setup();
+  mUnitLightOutputPinIn     ->setup();
   rpmPinIn                  ->setup();
   speedPinIn_wheel          ->setup();
   speedPinIn_abs            ->setup();
@@ -83,6 +83,8 @@ void BMW_K75RT::setup () {
 
   pcf8574_1                 ->begin();
   pcf8574_2                 ->begin();
+
+  gear = -1;
 }
 
 void BMW_K75RT::loopInit() {
