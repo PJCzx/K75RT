@@ -12,6 +12,7 @@ class Stopwatch {
     unsigned long int currentMillis = 0;
     unsigned long int previousMillis = 0;
     void run();
+    unsigned long int currentSecond();
 };
 
 #endif

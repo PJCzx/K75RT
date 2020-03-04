@@ -19,3 +19,7 @@ void Stopwatch::run() {
   //update
   currentMillis = millis();
 }
+
+unsigned long int Stopwatch::currentSecond() {
+  return currentMillis/1000;
+}
