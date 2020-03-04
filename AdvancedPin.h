@@ -14,7 +14,6 @@ class DigitalPin {
     int pin;
     
   public:
-    DigitalPin();
     DigitalPin(int io_type, int pin);
     DigitalPin(int io_type, PCF8574* pcf8574, int pin);
     

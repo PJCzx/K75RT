@@ -5,7 +5,6 @@
 
 using namespace std;
 
-DigitalPin::DigitalPin(): ioType(INPUT), pin(1) { }; //TODO / This works but seems wrong
 DigitalPin::DigitalPin(int ioType, int pin): ioType(ioType), pin(pin) { };
 DigitalPin::DigitalPin(int ioType, PCF8574* pcf8574, int pin): ioType(ioType), pcf8574(pcf8574), pin(pin) { };
         
