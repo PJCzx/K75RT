@@ -12,6 +12,7 @@ class DigitalPin {
     int ioType;
     PCF8574* pcf8574 = NULL;
     int pin;
+    bool currentState;
     
   public:
     DigitalPin(int io_type, int pin);
@@ -26,6 +27,7 @@ class DigitalPin {
     void set(bool value); 
     void high();
     void low();
+    void toggle();
 };
 
 class AnalogicPin {

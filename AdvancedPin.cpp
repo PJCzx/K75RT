@@ -15,13 +15,15 @@ void DigitalPin::setup(int setupValue) {
 
 void DigitalPin::sayHello() {
     Serial.print("DigitalPin says Hi :) ");
-    Serial.print("I'm set to pin :");
-    Serial.println(pin);
+    Serial.print("Pin / State : ");
+    Serial.print(pin);
+    Serial.println(currentState ? "HIGH" : "LOW");
 }
 
 bool DigitalPin::state() {
-  if (pcf8574 == NULL) return digitalRead(pin);
-  else return pcf8574->digitalRead(pin);
+  if (pcf8574 == NULL) currentState = digitalRead(pin);
+  else currentState = pcf8574->digitalRead(pin);
+  return currentState;
 }
 
 void DigitalPin::set(bool value) {
@@ -30,6 +32,7 @@ void DigitalPin::set(bool value) {
   } else {
     digitalWrite(pin, value);
   }
+  currentState = value;
 } 
 
 void DigitalPin::high() {
@@ -38,6 +41,10 @@ void DigitalPin::high() {
 
 void DigitalPin::low() {
   set(LOW);
+}
+
+void DigitalPin::toggle() {
+  set(!currentState);
 }
 
 
