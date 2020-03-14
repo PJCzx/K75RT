@@ -266,8 +266,6 @@ void BMW_K75RT::updateVentialtion() {
 
   engineTemperatureSensorValue = temperatureSensorPinIn->value();
   
-  engineTemperature = mapf(engineTemperatureSensorValue,0.0,1.0,0.0,1.0);
-
   if(engineTemperature > TEMPERATURE_VENTILATION_THRESHOLD) fanOn = true;
   if(engineTemperature < TEMPERATURE_VENTILATION_THRESHOLD - TEMPERATURE_VENTILATION_HYSTERESIS) fanOn = false;
   
@@ -275,6 +273,8 @@ void BMW_K75RT::updateVentialtion() {
   if(engineTemperature < TEMPERATURE_WARNING_THRESHOLD - TEMPERATURE_WARNING_HYSTERESIS) engineTemperatureWarning =  false;
 
   fanPinOut->set(fanOn ? HIGH : LOW); 
+
+  engineTemperature = mapf(engineTemperatureSensorValue,0.0,1.0,TEMPERATURE_MIN_VAL_TEMP,TEMPERATURE_MAX_VAL_TEMP);
 }
 
 void BMW_K75RT::updateEngagedGear() {
@@ -284,6 +284,7 @@ void BMW_K75RT::updateEngagedGear() {
 
   //conversion en numéro de vitesse
   gearWarning = false;
+  engagedGear = -1;
   
        if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == LOW)   engagedGear = 0;
   else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == LOW)   engagedGear = 1;
@@ -291,7 +292,9 @@ void BMW_K75RT::updateEngagedGear() {
   else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == LOW)   engagedGear = 3;
   else if(gearBox1Value == LOW   && gearBox2Value == LOW  && gearBox3Value == HIGH ) engagedGear = 4;
   else if(gearBox1Value == HIGH  && gearBox2Value == LOW  && gearBox3Value == HIGH ) engagedGear = 5;
-  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) engagedGear = 6;
+  else if(gearBox1Value == LOW   && gearBox2Value == HIGH && gearBox3Value == HIGH ) engagedGear = 6;
+  else if(gearBox1Value == HIGH  && gearBox2Value == HIGH && gearBox3Value == HIGH ) engagedGear = 7;
+
   else { engagedGear = -1; gearWarning = true; }
 
   neutralPinOut->set(engagedGear == 0 ? HIGH : LOW);
@@ -304,18 +307,21 @@ void BMW_K75RT::updateEngagedGear() {
 
 void BMW_K75RT::updateFuelLevel() {
    
-  fuelLevel = fuelSensorPinIn->value();
+  fuelLevelSensorValue = fuelSensorPinIn->value();
 
-  if(fuelLevel <= FUEL_LEVEL_THERSHOLD_MIN) {
-    fuelIndicatorPinOut->set(FUEL_LEVEL_HIGH); 
-  } else if(fuelLevel >= FUEL_LEVEL_THERSHOLD_MAX) {
-    fuelIndicatorPinOut->set(FUEL_LEVEL_LOW); 
+  if(fuelLevelSensorValue <= FUEL_LEVEL_THERSHOLD_MIN) {
+    fuelWarning = true; 
+  } else if(fuelLevelSensorValue >= FUEL_LEVEL_THERSHOLD_MAX) {
+    fuelWarning = false; 
   }
+  fuelIndicatorPinOut->set(fuelWarning);
+
+  fuelLevel = mapf(fuelLevelSensorValue, 0.0, 1.0, FUEL_MIN_VAL_LEVEL, FUEL_MAX_VAL_LEVEL);
 }
 
 bool BMW_K75RT::isGlobalWarning() {
 
-  globalWarning = oilPressureWarning || gearWarning || engineTemperatureWarning || rpmWarning;
+  globalWarning = oilPressureWarning || gearWarning || engineTemperatureWarning || rpmWarning || fuelWarning;
   warningPinOut->set(globalWarning ? HIGH : LOW); 
   return globalWarning;
 }
@@ -323,7 +329,7 @@ bool BMW_K75RT::isGlobalWarning() {
 
 String BMW_K75RT::toString() {
 
-     String text = "";
+    String text = "";
     text+= "eps : ";
     text += processed - lastPrintedProcessed;
     lastPrintedProcessed = processed;
@@ -362,11 +368,13 @@ String BMW_K75RT::toString() {
       text += gearBox3Value;
       text += ")\t";
       
-
-          
     //FUEL
-      //INPUTS
-      //OUTPUTS
+      text += (float)(fuelLevel);
+      text += "% (";
+      text += (float)(fuelLevelSensorValue);
+      text += " W: ";
+      text += fuelWarning ? "X" : "-";
+      text += ")\t";
           
     //ALERTE
       //INPUTS

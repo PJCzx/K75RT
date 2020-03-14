@@ -82,10 +82,12 @@ class BMW_K75RT {
     /* POST #23 http://bmist.forumpro.fr/t100118-probleme-sonde-temperature-ldr-k75?highlight=sonde+temp%E9rature
     *  "le ventilo se déclenchait vers 29,5 ce qui doit correspondre à 101°c valeur normale"
     */
-    const float TEMPERATURE_VENTILATION_THRESHOLD = 103;  //TODO : FIND MATCHING VALUES //103° = 175 OHMS
-    const float TEMPERATURE_VENTILATION_HYSTERESIS = 5; //5° TODO : Verifier si cela nous convient
-    const float TEMPERATURE_WARNING_THRESHOLD = 111;  //TODO : FIND MATCHING VALUES // 111° = 143 OHMS
-    const float TEMPERATURE_WARNING_HYSTERESIS = 5; //TODO : Verifier si cela nous convient
+    const float TEMPERATURE_VENTILATION_THRESHOLD = 0.3;  //TODO : FIND MATCHING VALUES //103° = 175 OHMS
+    const float TEMPERATURE_VENTILATION_HYSTERESIS = 0.1; //5° TODO : Verifier si cela nous convient
+    const float TEMPERATURE_WARNING_THRESHOLD = 0.6;  //TODO : FIND MATCHING VALUES // 111° = 143 OHMS
+    const float TEMPERATURE_WARNING_HYSTERESIS = 0.1; //TODO : Verifier si cela nous convient
+    const float TEMPERATURE_MIN_VAL_TEMP = -20.0; //TODO : définir la température correspondat à la valeur mesurée le plus basse
+    const float TEMPERATURE_MAX_VAL_TEMP = 100.0; //TODO : définir la température correspondat à la valeur mesurée le plus basse
 
     /**********************************
     GEARBOX
@@ -96,8 +98,8 @@ class BMW_K75RT {
     **********************************/
     const int FUEL_LEVEL_THERSHOLD_MAX = 0.15; //S'allume en dessous de 10%
     const int FUEL_LEVEL_THERSHOLD_MIN = 0.10; //S'éteint au dessus de 15%
-    const int FUEL_LEVEL_HIGH = 1.0; //S'éteint au dessus de 15%
-    const int FUEL_LEVEL_LOW = 0.0; //S'éteint au dessus de 15%
+    const float FUEL_MIN_VAL_LEVEL = 0.0; //TODO : définir % correspondant à la valeur mesurée le plus basse
+    const float FUEL_MAX_VAL_LEVEL = 100; //TODO : définir le % correspondant à la valeur mesurée le plus basse
 
     /**********************************
     WARNINGS
@@ -136,7 +138,9 @@ class BMW_K75RT {
     int engagedGear;
     bool gearWarning;
 
+    float fuelLevelSensorValue;
     float fuelLevel;
+    bool fuelWarning;
 
     unsigned long int processed;
     unsigned long int lastPrintedProcessed;
