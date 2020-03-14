@@ -201,22 +201,25 @@ void BMW_K75RT::updateRPM() {
   
   //if state changed since last check
   if(currentRPMState == previousRPMState) {
-    timeSpentAtPreviousRPMState += stopwatch->currentMillis - stopwatch->previousMillis;
+    timeSpentAtPreviousRPMState_IN += stopwatch->currentMillis - stopwatch->previousMillis;
   } else {
     previousRPMState = currentRPMState;
     int segments = 2;
-    float secondesParSegments = (float)timeSpentAtPreviousRPMState*2/1000;
+    float secondesParSegments = (float)timeSpentAtPreviousRPMState_IN*2/1000;
     rpm = 60.0/secondesParSegments*segments;
     if(rpm >= SHIFT_LIGHT_THERSHOLD_MAX){ //TODO : Define another threshold ?
       rpmWarning = true;
     } else if(rpm <= SHIFT_LIGHT_THERSHOLD_MIN){
       rpmWarning = false;
     }
-    timeSpentAtPreviousRPMState = 0;
+    timeSpentAtPreviousRPMState_IN = 0;
   }
-  //TODO : Ecrire le pulse sur rpmPinOut
-  float timeAtState = (60.0 / rpm) /2 ;
-  if(timeSpentAtPreviousRPMState > timeAtState) this->rpmPinOut->toggle();
+  //TODO : VERIFIER SI CE BOUT DE CODE FONCTIONNE
+  float timeAtState = (60000.0 / rpm) / REQUIRED_RPM_PULSE;
+  if(timeSpentAtPreviousRPMState_OUT > timeAtState) {
+    timeSpentAtPreviousRPMState_OUT = 0;
+    this->rpmPinOut->toggle();
+  }
 }
 
 void BMW_K75RT::updateSpeed() {
@@ -226,12 +229,12 @@ void BMW_K75RT::updateSpeed() {
   
   //if state changed since last check
   if(currentSpeedState == previousSpeedState) {
-    timeSpentAtPreviousSpeedState += (stopwatch->currentMillis - stopwatch->previousMillis);
+    timeSpentAtPreviousSpeedState_IN += (stopwatch->currentMillis - stopwatch->previousMillis);
   } else {
     previousSpeedState = currentSpeedState;
 
     //x2 parce qu'on mesure qu'un seul etat
-    float millisecondesParSegments = (float)timeSpentAtPreviousSpeedState*2/1000;
+    float millisecondesParSegments = (float)timeSpentAtPreviousSpeedState_IN*2/1000;
     
     //PREFERE NOMBRE DE SEGMENT POUR 1 tour de roue
 
@@ -246,10 +249,14 @@ void BMW_K75RT::updateSpeed() {
     //vitesseEnKMparMilisec*1000*60*60 > Heure
     
     kmh = vitesseEnMMparMilisec/1000/1000*1000*60*60;
+    timeSpentAtPreviousSpeedState_IN = 0;
+  }
 
-    //TODO : Write pulse on speedIdicatorPinOut
-
-    timeSpentAtPreviousSpeedState = 0;
+  //TODO : VERIFIER SI CE BOUT DE CODE FONCTIONNE
+  float timeAtState = (60000.0 / kmh) / REQUIRED_KMH_PULSE;
+  if(timeSpentAtPreviousSpeedState_OUT > timeAtState) {
+    timeSpentAtPreviousSpeedState_OUT = 0;
+    this->speedIdicatorPinOut->toggle();
   }
   
 }

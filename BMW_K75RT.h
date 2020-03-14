@@ -67,13 +67,14 @@ class BMW_K75RT {
     /*********************************
     RPM & SHIFTLIGHT
     *********************************/  
+    const int REQUIRED_RPM_PULSE = 2; //TODO : FIND THE GOOD VALUE
     const int SHIFT_LIGHT_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
     const int SHIFT_LIGHT_THERSHOLD_MIN = 8400; // LA ZONE SUR LE COMPTEUR BMX EST ENTRE 8500 ET 9000
 
     /**********************************
     SPEED
     **********************************/
-
+    const int REQUIRED_KMH_PULSE = 1; //TODO : FIND THE GOOD VALUE
 
     /*********************************
     TEMPERATURE MOTEUR ET VENTILATION
@@ -113,13 +114,15 @@ class BMW_K75RT {
 
     bool currentRPMState;
     bool previousRPMState;
-    unsigned long int timeSpentAtPreviousRPMState;
+    unsigned long int timeSpentAtPreviousRPMState_IN;
+    unsigned long int timeSpentAtPreviousRPMState_OUT;
     float rpm;
     bool rpmWarning = false;
 
     bool currentSpeedState;
     bool previousSpeedState;
-    unsigned long int timeSpentAtPreviousSpeedState;
+    unsigned long int timeSpentAtPreviousSpeedState_IN;
+    unsigned long int timeSpentAtPreviousSpeedState_OUT;
     float kmh;
 
     float engineTemperatureSensorValue;
