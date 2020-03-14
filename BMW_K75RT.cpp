@@ -214,8 +214,9 @@ void BMW_K75RT::updateRPM() {
     }
     timeSpentAtPreviousRPMState = 0;
   }
-
   //TODO : Ecrire le pulse sur rpmPinOut
+  float timeAtState = (60.0 / rpm) /2 ;
+  if(timeSpentAtPreviousRPMState > timeAtState) this->rpmPinOut->toggle();
 }
 
 void BMW_K75RT::updateSpeed() {
