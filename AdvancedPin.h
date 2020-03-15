@@ -27,7 +27,7 @@ class DigitalPin {
     void set(bool value); 
     void high();
     void low();
-    void toggle();
+    bool toggle();
 };
 
 class AnalogicPin {

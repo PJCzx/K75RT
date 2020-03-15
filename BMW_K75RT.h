@@ -32,9 +32,11 @@ class BMW_K75RT {
     //OUTPUTS
     AnalogicPin * fuelIndicatorPinOut;        //OK
     
+    DigitalPin * faker;
+
     DigitalPin * ledRingPinOut;
     DigitalPin * headlightPinOut; 
-    DigitalPin * speedIdicatorPinOut;
+    DigitalPin * speedPinOut;
     DigitalPin * rpmPinOut;                   //OK
     DigitalPin * fanPinOut;                   //OK
     DigitalPin * warningPinOut;
@@ -65,16 +67,16 @@ class BMW_K75RT {
     const float OIL_PRESURE_THESHOLD_MIN = 0.33;
 
     /*********************************
-    RPM & SHIFTLIGHT
+    RPM
     *********************************/  
-    const int REQUIRED_RPM_PULSE = 2; //TODO : FIND THE GOOD VALUE
-    const int SHIFT_LIGHT_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
-    const int SHIFT_LIGHT_THERSHOLD_MIN = 8400; // LA ZONE SUR LE COMPTEUR BMX EST ENTRE 8500 ET 9000
+    const float RPM_PULSE_RATIO = 60000; //TODO : FIND THE GOOD VALUE (in milisec)
+    const int RPM_THERSHOLD_MAX = 8600; //67HZ + 2 Segments
+    const int RPM_THERSHOLD_MIN = 8400; // LA ZONE SUR LE COMPTEUR BMX EST ENTRE 8500 ET 9000
 
     /**********************************
     SPEED
     **********************************/
-    const int REQUIRED_KMH_PULSE = 1; //TODO : FIND THE GOOD VALUE
+    const float KMH_PULSE_RATIO = 3000; //TODO : FIND THE GOOD VALUE (in milisec)
 
     /*********************************
     TEMPERATURE MOTEUR ET VENTILATION

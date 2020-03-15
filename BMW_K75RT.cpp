@@ -23,8 +23,8 @@ BMW_K75RT::BMW_K75RT() {
   this->fuelSensorPinIn            = new AnalogicPin(INPUT, A3); //OK
 
   this->mUnitLightOutputPinIn      = new DigitalPin(INPUT, 2);
-  this->rpmPinIn                   = new DigitalPin(INPUT, 3);
-  this->speedPinIn_wheel           = new DigitalPin(INPUT, 4);  //OK TODO : Choisir
+  this->rpmPinIn                   = new DigitalPin(INPUT_PULLUP, 3);
+  this->speedPinIn_wheel           = new DigitalPin(INPUT_PULLUP, 4);  //OK TODO : Choisir //TODO : Cosidérer tout passer en INPUT_PULLUP
   this->speedPinIn_abs             = new DigitalPin(INPUT, 5);  //OK TODO : Choisir
   this->lightSwitchPosition1PinIn  = new DigitalPin(INPUT, 6);  //OK
   this->lightSwitchPosition2PinIn  = new DigitalPin(INPUT, 7);  //OK
@@ -33,12 +33,14 @@ BMW_K75RT::BMW_K75RT() {
   this->gearBox3PinIn              = new DigitalPin(INPUT, 10); //OK
 
   //OUTPUTS
+  this->faker                     = new DigitalPin(OUTPUT, 11);
+
   this->fuelIndicatorPinOut       = new AnalogicPin(OUTPUT, A6); //OK
 
   this->ledRingPinOut             = new DigitalPin(OUTPUT, pcf8574_1, 0);
   this->headlightPinOut           = new DigitalPin(OUTPUT, pcf8574_1, 1); 
-  this->speedIdicatorPinOut       = new DigitalPin(OUTPUT, pcf8574_1, 2);
-  this->rpmPinOut                 = new DigitalPin(OUTPUT, pcf8574_1, 3); //OK
+  this->speedPinOut               = new DigitalPin(OUTPUT, 12);//DigitalPin(OUTPUT, pcf8574_1, 2);
+  this->rpmPinOut                 = new DigitalPin(OUTPUT, 13);//DigitalPin(OUTPUT, pcf8574_1, 3); //OK
   this->fanPinOut                 = new DigitalPin(OUTPUT, pcf8574_1, 4); //OK
   this->warningPinOut             = new DigitalPin(OUTPUT, pcf8574_1, 5);
 
@@ -71,10 +73,12 @@ void BMW_K75RT::setup () {
   gearBox3PinIn             ->setup();
   
   //OUTPUTS
+  faker                     ->setup();
+
   fuelIndicatorPinOut       ->setup();
   ledRingPinOut             ->setup();
   headlightPinOut           ->setup();
-  speedIdicatorPinOut       ->setup();
+  speedPinOut               ->setup();
   rpmPinOut                 ->setup();
   fanPinOut                 ->setup();
   warningPinOut             ->setup();
@@ -207,19 +211,24 @@ void BMW_K75RT::updateRPM() {
     int segments = 2;
     float secondesParSegments = (float)timeSpentAtPreviousRPMState_IN*2/1000;
     rpm = 60.0/secondesParSegments*segments;
-    if(rpm >= SHIFT_LIGHT_THERSHOLD_MAX){ //TODO : Define another threshold ?
+
+    if(rpm >= RPM_THERSHOLD_MAX){ //TODO : Define another threshold ?
       rpmWarning = true;
-    } else if(rpm <= SHIFT_LIGHT_THERSHOLD_MIN){
+    } else if(rpm <= RPM_THERSHOLD_MIN){
       rpmWarning = false;
     }
+
     timeSpentAtPreviousRPMState_IN = 0;
   }
   //TODO : VERIFIER SI CE BOUT DE CODE FONCTIONNE
-  float timeAtState = (60000.0 / rpm) / REQUIRED_RPM_PULSE;
+  float timeAtState = (1.0/rpm) * RPM_PULSE_RATIO;
+  
   if(timeSpentAtPreviousRPMState_OUT > timeAtState) {
     timeSpentAtPreviousRPMState_OUT = 0;
     this->rpmPinOut->toggle();
   }
+  timeSpentAtPreviousRPMState_OUT += stopwatch->timeSpentFromLastRun();
+  if(timeSpentAtPreviousRPMState_OUT > 1000) timeSpentAtPreviousRPMState_OUT = 0;
 }
 
 void BMW_K75RT::updateSpeed() {
@@ -229,36 +238,35 @@ void BMW_K75RT::updateSpeed() {
   
   //if state changed since last check
   if(currentSpeedState == previousSpeedState) {
-    timeSpentAtPreviousSpeedState_IN += (stopwatch->currentMillis - stopwatch->previousMillis);
+    timeSpentAtPreviousSpeedState_IN += stopwatch->timeSpentFromLastRun();
   } else {
+    //TODO : Simplifier les calculs
+    //TODO : Faire attention avec les millisec et les calculs qui ne sont pas unsigned long et donc qui peuvent un jour déconner
     previousSpeedState = currentSpeedState;
 
-    //x2 parce qu'on mesure qu'un seul etat
-    float millisecondesParSegments = (float)timeSpentAtPreviousSpeedState_IN*2/1000;
-    
-    //PREFERE NOMBRE DE SEGMENT POUR 1 tour de roue
+    float circonferenceMM = 17*25.4*PI; //TODO : Définir taille de la roue (17 pouces -> MM * PI)
+    float segments = 1.0; // TODO : Définir nb de segments 
+    float distanceEnMMParcouruePourUnSegment = circonferenceMM/segments/2; // /2 parce qu'on HIGH + LOW = 1 segment
 
-    int circonferenceMM = 1000;
-    int segments = 1;
+    float millisecondesParSegments = (float)timeSpentAtPreviousSpeedState_IN;
 
-    float distancePourUnSegment = circonferenceMM/segments;
-    float vitesseEnMMparMilisec = distancePourUnSegment/millisecondesParSegments;
+    float vitesseEnMMparMilisec = distanceEnMMParcouruePourUnSegment/millisecondesParSegments;
+    float vitesseEnMMparHeures = vitesseEnMMparMilisec*1000.0*60.0*60.0;
+    float vitesseEnKMparHeures = vitesseEnMMparHeures / 1000.0 / 1000.0;
     
-    //vitesseEnMMparMilisec/1000 > Metre
-    //vitesseEnMMparMilisec/1000000 > vitesseEnKMparMilisec
-    //vitesseEnKMparMilisec*1000*60*60 > Heure
-    
-    kmh = vitesseEnMMparMilisec/1000/1000*1000*60*60;
+    kmh = vitesseEnKMparHeures;
+
     timeSpentAtPreviousSpeedState_IN = 0;
   }
 
   //TODO : VERIFIER SI CE BOUT DE CODE FONCTIONNE
-  float timeAtState = (60000.0 / kmh) / REQUIRED_KMH_PULSE;
+  float timeAtState = (1.0 / kmh) * KMH_PULSE_RATIO;
   if(timeSpentAtPreviousSpeedState_OUT > timeAtState) {
     timeSpentAtPreviousSpeedState_OUT = 0;
-    this->speedIdicatorPinOut->toggle();
+    this->speedPinOut->toggle();
   }
   
+  timeSpentAtPreviousSpeedState_OUT += stopwatch->timeSpentFromLastRun();
 }
 
 
@@ -342,13 +350,22 @@ String BMW_K75RT::toString() {
       //INPUTS
       //OUTPUTS
           
-    //RPM & SHIFTLIGHT
-      //INPUTS
-      //OUTPUTS
+    //RPM
+    text += "RPM: ";
+    text += rpm;
+    text += "(";
+    text += timeSpentAtPreviousRPMState_IN;
+    text += ") W(";
+    text += rpmWarning ? "X" : "-";
+    text += ")\t";
           
     //SPEED
-       //INPUTS
-       //OUTPUTS
+    text += "SPEED: ";
+    text += kmh;
+    text += "(";
+    text += timeSpentAtPreviousSpeedState_IN;
+    text += ")\t";
+    
          
     //TEMPERATURE MOTEUR ET VENTILATION
       text += (float)(engineTemperature);

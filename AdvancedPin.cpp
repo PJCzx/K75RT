@@ -43,8 +43,10 @@ void DigitalPin::low() {
   set(LOW);
 }
 
-void DigitalPin::toggle() {
-  set(!currentState);
+bool DigitalPin::toggle() {
+  bool newstate = !currentState;
+  set(newstate);
+  return newstate;
 }
 
 

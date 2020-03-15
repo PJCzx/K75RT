@@ -20,6 +20,10 @@ void Stopwatch::run() {
   currentMillis = millis();
 }
 
+unsigned long Stopwatch::timeSpentFromLastRun() {
+  return millis() - previousMillis;
+}
+
 unsigned long int Stopwatch::currentSecond() {
   return currentMillis/1000;
 }

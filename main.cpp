@@ -74,5 +74,7 @@ void loop() {
   if(k75.stopwatch->currentSecond() > lastDispalyedSecond) {
     Serial.println(k75.toString());
     lastDispalyedSecond = k75.stopwatch->currentSecond();
+    k75.faker->toggle();
+    //Serial.println( k75.faker->toggle() ? "HIGH" : "LOW");
   }
 }
