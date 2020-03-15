@@ -39,8 +39,8 @@ BMW_K75RT::BMW_K75RT() {
 
   this->ledRingPinOut             = new DigitalPin(OUTPUT, pcf8574_1, 0);
   this->headlightPinOut           = new DigitalPin(OUTPUT, pcf8574_1, 1); 
-  this->speedPinOut               = new DigitalPin(OUTPUT, 12);//DigitalPin(OUTPUT, pcf8574_1, 2);
-  this->rpmPinOut                 = new DigitalPin(OUTPUT, 13);//DigitalPin(OUTPUT, pcf8574_1, 3); //OK
+  this->speedPinOut               = new DigitalPin(OUTPUT, pcf8574_1, 2);
+  this->rpmPinOut                 = new DigitalPin(OUTPUT, pcf8574_1, 3); //OK
   this->fanPinOut                 = new DigitalPin(OUTPUT, pcf8574_1, 4); //OK
   this->warningPinOut             = new DigitalPin(OUTPUT, pcf8574_1, 5);
 
